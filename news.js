@@ -5,6 +5,12 @@
 window.NEWS = [
   {
     date: "2026-10-11",
+    title: "New: the 2-minute down payment quiz",
+    text: "Answer 8 quick questions and see which down payment help and low-down-payment programs may fit you. No credit check!",
+    link: { url: "quiz.html", label: "Take the quiz" }
+  },
+  {
+    date: "2026-10-11",
     title: "New: check any KC address for down payment help",
     text: "Type in an address above and see which USDA, MHDC, Kansas and Chase programs the home may qualify for, right on this page."
   },
