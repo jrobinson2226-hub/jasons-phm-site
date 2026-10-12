@@ -11,6 +11,12 @@ window.NEWS = [
     link: { url: "#check", label: "Check an address" }
   },
   {
+    date: "2026-10-13",
+    title: "Buying or selling? Check for an assumable loan",
+    text: "About 1 in 4 mortgages are FHA, VA or USDA loans a buyer can take over, often at a much lower rate. See which loans qualify, how to cover the equity gap, and what to expect.",
+    link: { url: "assumable-loans.html", label: "Read the full update" }
+  },
+  {
     date: "2026-10-11",
     title: "New: the 2-minute down payment quiz",
     text: "Answer 8 quick questions and see which down payment help and low-down-payment programs may fit you. No credit check!",
