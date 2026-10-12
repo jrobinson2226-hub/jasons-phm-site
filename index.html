@@ -619,7 +619,8 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
 <script src="news.js"></script>
 <script>
 (function(){
-  var items = (window.NEWS || []).slice().sort(function(a,b){ return String(b.date).localeCompare(String(a.date)); }).slice(0,3);
+  var _d = new Date(), today = _d.getFullYear()+'-'+String(_d.getMonth()+1).padStart(2,'0')+'-'+String(_d.getDate()).padStart(2,'0');
+  var items = (window.NEWS || []).filter(function(n){ return String(n.date) <= today; }).sort(function(a,b){ return String(b.date).localeCompare(String(a.date)); }).slice(0,3);
   if(!items.length) return;
   var ul = document.getElementById('news-list');
   items.forEach(function(n){

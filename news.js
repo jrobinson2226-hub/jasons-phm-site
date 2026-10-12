@@ -1,8 +1,15 @@
 // Latest updates shown near the top of the Program Finder.
 // Newest first. The page shows the first 3 posts.
+// A post dated in the future stays hidden until that date (local time).
 // Each post: date (YYYY-MM-DD), title, text (1-2 short sentences), optional link {url, label}.
 // Keep it plain and short. Never show a rate without its APR and the full rate disclaimer.
 window.NEWS = [
+  {
+    date: "2026-10-20",
+    title: "Agents: check the address before you list or write",
+    text: "Type in any listing or offer address and see if the home qualifies for USDA, MHDC, Kansas or Chase programs. Then tap \"Copy link to these results\" to share it with your buyer!",
+    link: { url: "#check", label: "Check an address" }
+  },
   {
     date: "2026-10-11",
     title: "New: the 2-minute down payment quiz",
