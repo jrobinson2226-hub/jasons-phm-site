@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Down Payment Help Quiz | Jason Robinson, PHM</title>
+<meta name="description" content="Answer 8 quick questions and see which Kansas City down payment help and low-down-payment loan programs may fit you. From Jason Robinson, Sr. Loan Officer at Prosperity Home Mortgage, NMLS# 1008330.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Sarabun:wght@800&family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+:root{
+  --navy:#00426a; --cyan:#00aed9; --blue:#2694cf;
+  --surface:#ffffff; --surface-alt:#eef4f8; --ink:#1c252c; --ink-muted:#56636d;
+  --heading:#00426a; --rule:#00426a; --line:#cfdbe4; --field:#ffffff;
+  --ok:#1f7a4d; --ok-bg:#e3f3ea; --no:#8a3b12; --no-bg:#f8e9df; --info-bg:#e6f1f8;
+  --display:"Bebas Neue","Oswald","Arial Narrow",sans-serif;
+  --body:"Source Sans 3","Source Sans Pro",Arial,sans-serif;
+  --name:"Sarabun","Source Sans 3",Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --surface:#0d1a24; --surface-alt:#15293a; --ink:#eef3f7; --ink-muted:#a7b5c0;
+  --heading:#8fd0f0; --rule:#2694cf; --line:#284256; --field:#0f2030;
+  --ok:#7fd3a6; --ok-bg:#143326; --no:#f0b48f; --no-bg:#3a2216; --info-bg:#132c40; color-scheme:dark}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--surface);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+a{color:var(--blue)}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:20px}
+.narrow{max-width:760px;margin:0 auto;padding-inline:20px}
+h1,h2,h3{font-family:var(--display);font-weight:400;color:var(--heading);letter-spacing:.5px;margin:0;text-wrap:balance}
+p{margin:0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border-radius:3px;border:0;background:var(--navy);color:#fff;font:700 16px var(--body);text-decoration:none;cursor:pointer;white-space:nowrap}
+.btn:hover{background:#00598c}
+.btn.ghost{background:transparent;color:var(--heading);border:1px solid var(--heading)}
+.btn.cyan{background:var(--cyan);color:#00263d}
+.btn.cyan:hover{background:#3cc3e6}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.mast{background:var(--navy);color:#fff;position:sticky;top:0;z-index:10;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+.mast .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-block:14px;flex-wrap:wrap}
+.mast img{height:34px;width:auto;display:block}
+.mast-right{display:flex;align-items:center;gap:18px}
+.mast .who{font-size:14px;text-align:right}
+.mast .who b{font-family:var(--name);font-weight:800;font-size:16px;display:block}
+.mast a{color:#fff}
+.apply{display:inline-flex;align-items:center;justify-content:center;background:var(--cyan);color:#00263d!important;font-family:var(--display);font-size:24px;letter-spacing:1px;line-height:1;padding:12px 26px 10px;border-radius:3px;text-decoration:none;white-space:nowrap;box-shadow:0 0 0 3px rgba(0,174,217,.25)}
+@media (max-width:640px){.mast .who{display:none}.apply{font-size:21px;padding:10px 18px 8px}}
+
+.intro{background:var(--surface-alt);padding-block:36px 30px}
+.intro .kick{font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:1.5px;font-size:13px;margin-bottom:6px}
+.intro h1{font-size:clamp(40px,6vw,64px);line-height:.95}
+.intro p.lead{margin-top:12px;font-size:18px;color:var(--ink-muted);max-width:60ch}
+.co{display:none;margin-top:16px;padding:10px 14px;border-left:3px solid var(--cyan);background:var(--surface);font-size:15px}
+.co.on{display:block}
+
+main{padding-block:28px 56px}
+.progress{height:6px;background:var(--surface-alt);border-radius:3px;overflow:hidden;margin-bottom:8px}
+.progress span{display:block;height:100%;width:0;background:var(--cyan);transition:width .25s}
+.step-count{font-size:13px;color:var(--ink-muted);margin-bottom:18px}
+fieldset{border:0;margin:0;padding:0;min-width:0}
+legend{font-family:var(--display);font-size:clamp(28px,4vw,38px);line-height:1.05;color:var(--heading);padding:0;margin-bottom:6px}
+.help{color:var(--ink-muted);margin-bottom:16px}
+.opts{display:grid;gap:10px}
+.opt{position:relative}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt label{display:block;padding:14px 16px;border:1px solid var(--line);border-radius:4px;background:var(--field);cursor:pointer;font-weight:600;transition:border-color .15s,background .15s}
+.opt label small{display:block;font-weight:400;color:var(--ink-muted);font-size:14px}
+.opt label:hover{border-color:var(--blue)}
+.opt input:checked+label{border-color:var(--cyan);background:var(--info-bg);box-shadow:inset 4px 0 0 var(--cyan)}
+.opt input:focus-visible+label{outline:3px solid var(--cyan);outline-offset:2px}
+.nav{display:flex;justify-content:space-between;gap:12px;margin-top:22px}
+
+.results h2{font-size:clamp(34px,5vw,48px);line-height:1}
+.results .sum{color:var(--ink-muted);margin:8px 0 22px}
+.match{border-top:3px solid var(--rule);padding:14px 0 18px;display:grid;gap:6px}
+.match .tag{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:2px 8px;border-radius:2px;background:var(--ok-bg);color:var(--ok);justify-self:start}
+.match .tag.maybe{background:var(--info-bg);color:var(--heading)}
+.match h3{font-size:30px;line-height:1}
+.match .amt{font-weight:700;color:var(--blue)}
+.match ul{margin:4px 0 0;padding-left:20px;color:var(--ink)}
+.match ul li{margin:2px 0}
+.note{background:var(--no-bg);color:var(--ink);border-left:3px solid var(--no);padding:12px 14px;margin:6px 0 18px}
+.callout{background:var(--navy);color:#fff;padding:22px;border-radius:4px;margin-top:22px}
+.callout h3{color:#fff;font-size:32px}
+.callout p{margin-top:6px;color:#d8e8f2}
+.form{display:grid;gap:12px;margin-top:16px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:560px){.row{grid-template-columns:1fr}}
+.form label.f{display:grid;gap:4px;font-weight:600;font-size:14px;color:#fff}
+.form input[type=text],.form input[type=email],.form input[type=tel],.form select{width:100%;padding:11px 12px;border:1px solid #2d6a90;border-radius:3px;background:#fff;color:#1c252c;font:16px var(--body)}
+.consent{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:#d8e8f2;line-height:1.4}
+.consent input{margin-top:3px;width:18px;height:18px;flex:none}
+.err{color:#ffd2b8;font-size:14px;min-height:1em}
+.done{display:none}
+.done.on{display:block}
+.more{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+
+footer{border-top:1px solid var(--line);padding-block:24px 36px;margin-top:24px}
+.comp{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start}
+.comp img{width:44px;height:auto}
+.comp p{font-size:11px;line-height:1.4;color:var(--ink-muted);margin:0}
+.disclaim{font-size:12px;color:var(--ink-muted);margin-bottom:16px;max-width:95ch}
+.logo-dark{display:none}
+@media (prefers-color-scheme:dark){.logo-light{display:none}.logo-dark{display:block}}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <div class="wrap">
+    <a href="./"><img src="img/phm-logo-reversed.png" alt="Prosperity Home Mortgage"></a>
+    <div class="mast-right">
+      <div class="who"><b>Jason Robinson</b>Sr. Loan Officer · NMLS# 1008330 · <a href="tel:+19136877247">(913) 687-7247</a></div>
+      <a class="apply" href="https://my.phmloans.com/register?companyGuid=1f65684a-c230-4514-a95f-1c7195b50055&amp;userGuid=f8c00be5-da7f-448c-89cb-e53c61c159dd&amp;flowGuid=68b8db59-a419-4f75-9207-f2cb951e0f14&amp;branchGuid=1da1851d-0431-47b5-b3bf-2d48549547ab" target="_blank" rel="noopener">Apply now</a>
+    </div>
+  </div>
+</header>
+
+<div class="intro">
+  <div class="narrow">
+    <p class="kick">2-minute quiz · Kansas City metro</p>
+    <h1>Could you get help with your down payment?</h1>
+    <p class="lead">Eight quick questions, no credit check, no Social Security number. You'll see which programs may fit, and why.</p>
+    <p class="co" id="co"></p>
+  </div>
+</div>
+
+<main>
+  <div class="narrow">
+    <form id="quiz" novalidate>
+      <div class="progress" aria-hidden="true"><span id="bar"></span></div>
+      <p class="step-count" id="count" aria-live="polite"></p>
+
+      <fieldset class="step" data-q="state">
+        <legend>Where are you looking to buy?</legend>
+        <p class="help">Pick the side of State Line you're leaning toward.</p>
+        <div class="opts">
+          <div class="opt"><input type="radio" name="state" id="s-mo" value="MO"><label for="s-mo">Missouri side<small>Jackson, Clay, Platte, Cass and nearby counties</small></label></div>
+          <div class="opt"><input type="radio" name="state" id="s-ks" value="KS"><label for="s-ks">Kansas side<small>Johnson, Wyandotte, Leavenworth, Miami and nearby counties</small></label></div>
+          <div class="opt"><input type="radio" name="state" id="s-both" value="BOTH"><label for="s-both">Not sure yet / open to both</label></div>
+        </div>
+      </fieldset>
+
+      <fieldset class="step" data-q="ksArea" data-if="state=KS">
+        <legend>Which part of Kansas?</legend>
+        <p class="help">One Kansas program isn't offered in every county.</p>
+        <div class="opts">
+          <div class="opt"><input type="radio" name="ksArea" id="k-jo" value="JOCO"><label for="k-jo">Johnson County<small>Olathe, Overland Park, Lenexa, Shawnee, Gardner and others</small></label></div>
+          <div class="opt"><input type="radio" name="ksArea" id="k-kck" value="KCK"><label for="k-kck">Kansas City, KS (inside city limits)</label></div>
+          <div class="opt"><input type="radio" name="ksArea" id="k-oth" value="OTHER"><label for="k-oth">Somewhere else in Kansas<small>Bonner Springs, Leavenworth, Paola, Lawrence and others</small></label></div>
+        </div>
+      </fieldset>
+
+      <fieldset class="step" data-q="first">
+        <legend>Have you owned a home in the last 3 years?</legend>
+        <p class="help">If not, you're usually considered a first-time buyer, even if you owned one before that.</p>
+        <div class="opts">
+          <div class="opt"><input type="radio" name="first" id="f-no" value="Y"><label for="f-no">No, I haven't<small>That makes me a first-time buyer</small></label></div>
+          <div class="opt"><input type="radio" name="first" id="f-yes" value="N"><label for="f-yes">Yes, I have</label></div>
+        </div>
+      </fieldset>
+
+      <fieldset class="step" data-q="vet">
+        <legend>Have you served in the military?</legend>
+        <p class="help">Veterans, active duty and some surviving spouses have extra options.</p>
+        <div class="opts">
+          <div class="opt"><input type="radio" name="vet" id="v-y" value="Y"><label for="v-y">Yes</label></div>
+          <div class="opt"><input type="radio" name="vet" id="v-n" value="N"><label for="v-n">No</label></div>
+        </div>
+      </fieldset>
+
+      <fieldset class="step" data-q="hh">
+        <legend>How many people live in your household?</legend>
+        <p class="help">Income limits go up with household size.</p>
+        <div class="opts">
+          <div class="opt"><input type="radio" name="hh" id="h-2" value="2"><label for="h-2">1 or 2</label></div>
+          <div class="opt"><input type="radio" name="hh" id="h-4" value="4"><label for="h-4">3 or 4</label></div>
+          <div class="opt"><input type="radio" name="hh" id="h-5" value="5"><label for="h-5">5 or more</label></div>
+        </div>
+      </fieldset>
+
+      <fieldset class="step" data-q="inc">
+        <legend>What's your total household income?</legend>
+        <p class="help">Before taxes, for everyone in the household. A rough number is fine.</p>
+        <div class="opts">
+          <div class="opt"><input type="radio" name="inc" id="i-1" value="1"><label for="i-1">Under $80,000</label></div>
+          <div class="opt"><input type="radio" name="inc" id="i-2" value="2"><label for="i-2">$80,000 to $113,000</label></div>
+          <div class="opt"><input type="radio" name="inc" id="i-3" value="3"><label for="i-3">$113,000 to $130,000</label></div>
+          <div class="opt"><input type="radio" name="inc" id="i-4" value="4"><label for="i-4">$130,000 to $172,000</label></div>
+          <div class="opt"><input type="radio" name="inc" id="i-5" value="5"><label for="i-5">Over $172,000</label></div>
+        </div>
+      </fieldset>
+
+      <fieldset class="step" data-q="credit">
+        <legend>About where is your credit score?</legend>
+        <p class="help">Your best guess is fine. Many banking apps show it for free.</p>
+        <div class="opts">
+          <div class="opt"><input type="radio" name="credit" id="c-5" value="720"><label for="c-5">720 or higher</label></div>
+          <div class="opt"><input type="radio" name="credit" id="c-4" value="680"><label for="c-4">680 to 719</label></div>
+          <div class="opt"><input type="radio" name="credit" id="c-3" value="660"><label for="c-3">660 to 679</label></div>
+          <div class="opt"><input type="radio" name="credit" id="c-2" value="640"><label for="c-2">640 to 659</label></div>
+          <div class="opt"><input type="radio" name="credit" id="c-1" value="580"><label for="c-1">Under 640</label></div>
+          <div class="opt"><input type="radio" name="credit" id="c-0" value="0"><label for="c-0">Not sure</label></div>
+        </div>
+      </fieldset>
+
+      <fieldset class="step" data-q="price">
+        <legend>What price range are you shopping in?</legend>
+        <p class="help">Doesn't need to be exact.</p>
+        <div class="opts">
+          <div class="opt"><input type="radio" name="price" id="p-1" value="1"><label for="p-1">Under $250,000</label></div>
+          <div class="opt"><input type="radio" name="price" id="p-2" value="2"><label for="p-2">$250,000 to $400,000</label></div>
+          <div class="opt"><input type="radio" name="price" id="p-3" value="3"><label for="p-3">$400,000 to $650,000</label></div>
+          <div class="opt"><input type="radio" name="price" id="p-4" value="4"><label for="p-4">$650,000 to $900,000</label></div>
+          <div class="opt"><input type="radio" name="price" id="p-5" value="5"><label for="p-5">Over $900,000</label></div>
+        </div>
+      </fieldset>
+
+      <fieldset class="step" data-q="save">
+        <legend>How much have you saved toward buying?</legend>
+        <p class="help">As a share of the price you picked. Include gifts from family you expect to get.</p>
+        <div class="opts">
+          <div class="opt"><input type="radio" name="save" id="d-0" value="0"><label for="d-0">Little or nothing yet</label></div>
+          <div class="opt"><input type="radio" name="save" id="d-1" value="1"><label for="d-1">About 1% to 3%</label></div>
+          <div class="opt"><input type="radio" name="save" id="d-2" value="2"><label for="d-2">About 3% to 10%</label></div>
+          <div class="opt"><input type="radio" name="save" id="d-3" value="3"><label for="d-3">More than 10%</label></div>
+        </div>
+      </fieldset>
+
+      <div class="nav" id="nav">
+        <button type="button" class="btn ghost" id="back">Back</button>
+        <button type="button" class="btn" id="next" disabled>Next</button>
+      </div>
+    </form>
+
+    <section class="results" id="results" hidden aria-live="polite">
+      <h2>Programs worth a look</h2>
+      <p class="sum" id="sum"></p>
+      <div id="matches"></div>
+
+      <div class="callout" id="lead">
+        <div id="formWrap">
+          <h3>Want Jason to double-check this?</h3>
+          <p>He'll look at your real numbers, confirm which programs you qualify for, and tell you what it means for your payment. No cost and no pressure.</p>
+          <form class="form" id="leadForm" novalidate>
+            <div class="row">
+              <label class="f">First and last name<input type="text" name="name" autocomplete="name" required></label>
+              <label class="f">Phone<input type="tel" name="phone" autocomplete="tel" required></label>
+            </div>
+            <div class="row">
+              <label class="f">Email<input type="email" name="email" autocomplete="email" required></label>
+              <label class="f">When do you hope to buy?
+                <select name="timeline" required>
+                  <option value="">Choose one</option>
+                  <option>In the next 3 months</option>
+                  <option>3 to 6 months</option>
+                  <option>6 to 12 months</option>
+                  <option>More than a year out</option>
+                  <option>Just exploring</option>
+                </select>
+              </label>
+            </div>
+            <label class="f">Working with a real estate agent? (optional)<input type="text" name="agent" placeholder="Agent's name"></label>
+            <label class="consent"><input type="checkbox" name="consent" required><span>I agree that Jason Robinson of Prosperity Home Mortgage may contact me by phone, text or email about my home financing, including by automated means. Consent isn't a condition of any purchase. Message and data rates may apply. Reply STOP to opt out of texts.</span></label>
+            <p class="err" id="err" role="alert"></p>
+            <div><button type="submit" class="btn cyan" id="send">Send my results to Jason</button></div>
+          </form>
+        </div>
+        <div class="done" id="done">
+          <h3>Got it. Thanks!</h3>
+          <p>Jason will reach out within one business day. Want to talk sooner? Call or text <a href="tel:+19136877247" style="color:#fff">(913) 687-7247</a>.</p>
+        </div>
+      </div>
+
+      <div class="more">
+        <a class="btn" href="./#check">Check a specific address</a>
+        <a class="btn ghost" href="./#programs">See every program</a>
+        <button type="button" class="btn ghost" id="redo">Start over</button>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p class="disclaim">This quiz is a general guide only and is not a loan application, pre-approval, credit decision or commitment to lend. Results are based on the ranges you choose and on 2026 program guidelines, which change. Program eligibility, income limits and purchase price limits are confirmed during a full review and underwriting. Income limits referenced: MHDC First Place 2026 limits for most Kansas City counties; USDA Section 502 Guaranteed FY2026 limits; HomeReady/Home Possible at 80% of the 2026 FFIEC median family income for the Kansas City MSA ($113,200). Down payment assistance programs are subject to funding availability.</p>
+    <div class="comp">
+      <img class="logo-light" src="img/ehl.png" alt="Equal Housing Lender">
+      <img class="logo-dark" src="img/ehl-white.png" alt="Equal Housing Lender">
+      <p>©2026 Prosperity Home Mortgage, LLC. (877) 275-1762. 3060 Williams Drive, Suite 600, Fairfax, VA 22031. All first mortgage products are provided by Prosperity Home Mortgage, LLC. Not all mortgage products may be available in all areas. Not all borrowers will qualify. NMLS ID #75164 (For licensing information go to: NMLS Consumer Access at http://www.nmlsconsumeraccess.org/) Arizona Mortgage Bankers License 1001252. Licensed by the Department of Financial Protection and Innovation under the California Residential Mortgage Lending Act. Licensed by the Delaware State Bank Commissioner. Georgia Residential Mortgage Licensee. Massachusetts Mortgage Lender and Mortgage Broker MC75164. Licensed by the NJ Department of Banking and Insurance. Licensed Mortgage Banker-NYS Department of Financial Services. Rhode Island Licensed Lender. Rhode Island Licensed Loan Broker. Rhode Island Licensed Third-Party Loan Servicer. Also licensed in AK, AL, AR, CO, CT, DC, FL, ID, IL, IN, KS, KY, LA, MD, ME, MI, MN, MO, MS, MT, NC, ND, NE, NH, NM, NV, OH, OK, OR, PA, SC, SD, TN, TX, UT, VA, VT, WA, WI, WV and WY.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  'use strict';
+
+  // Lead capture endpoint: paste the Google Apps Script web app URL here.
+  // Leave blank to fall back to a pre-filled email to Jason.
+  var LEAD_ENDPOINT = '';
+  var JASON_EMAIL = 'Jason.Robinson@phmloans.com';
+
+  var params = new URLSearchParams(location.search);
+  var src = { agent: params.get('agent') || '', src: params.get('src') || params.get('utm_source') || '', listing: params.get('listing') || '' };
+  if(src.agent){
+    var co = document.getElementById('co');
+    co.textContent = 'Shared with you by ' + src.agent + '. Your results go to Jason, and he’ll keep ' + src.agent.split(' ')[0] + ' in the loop.';
+    co.classList.add('on');
+    var ag = document.querySelector('#leadForm [name=agent]'); if(ag) ag.value = src.agent;
+  }
+
+  var form = document.getElementById('quiz');
+  var steps = Array.prototype.slice.call(form.querySelectorAll('.step'));
+  var back = document.getElementById('back'), next = document.getElementById('next');
+  var bar = document.getElementById('bar'), count = document.getElementById('count');
+  var idx = 0;
+
+  function val(n){ var el = form.querySelector('input[name="'+n+'"]:checked'); return el ? el.value : ''; }
+  function active(){ return steps.filter(function(s){ var c = s.getAttribute('data-if'); if(!c) return true; var p = c.split('='); return val(p[0]) === p[1]; }); }
+
+  function show(){
+    var list = active();
+    if(idx >= list.length){ finish(); return; }
+    steps.forEach(function(s){ s.hidden = true; });
+    var cur = list[idx]; cur.hidden = false;
+    bar.style.width = Math.round(idx / list.length * 100) + '%';
+    count.textContent = 'Question ' + (idx+1) + ' of ' + list.length;
+    back.style.visibility = idx ? 'visible' : 'hidden';
+    next.textContent = idx === list.length-1 ? 'See my results' : 'Next';
+    next.disabled = !val(cur.getAttribute('data-q'));
+  }
+  form.addEventListener('change', function(e){
+    var list = active(); var cur = list[idx];
+    if(!cur || !cur.contains(e.target)) return;
+    next.disabled = false;
+    setTimeout(function(){ if(active()[idx] === cur){ idx++; show(); } }, 220);
+  });
+  next.addEventListener('click', function(){ idx++; show(); });
+  back.addEventListener('click', function(){ if(idx){ idx--; show(); } });
+
+  // ---------- matching ----------
+  var answers = {};
+  function finish(){
+    ['state','ksArea','first','vet','hh','inc','credit','price','save'].forEach(function(k){ answers[k] = val(k); });
+    form.hidden = true;
+    var r = document.getElementById('results'); r.hidden = false;
+    render(match(answers));
+    window.scrollTo({top:0});
+    track('quiz_complete');
+  }
+
+  function match(a){
+    var out = [], notes = [];
+    var mo = a.state === 'MO' || a.state === 'BOTH', ks = a.state === 'KS' || a.state === 'BOTH';
+    var ft = a.first === 'Y', vet = a.vet === 'Y';
+    var hh = +a.hh, inc = +a.inc, cr = +a.credit, price = +a.price, save = +a.save;
+    var crKnown = cr > 0;
+    var c640 = cr >= 640, c660 = cr >= 660;
+    var lowSave = save <= 1;
+
+    function add(o){ out.push(o); }
+    function crNote(min){ return crKnown ? '' : 'Needs a ' + min + '+ credit score. Jason can help you check yours.'; }
+
+    // MHDC First Place (MO)
+    if(mo && price <= 3){
+      var incOk = inc <= 2 || (inc === 3 && hh >= 3);
+      var incMaybe = !incOk && inc <= 4;
+      if((ft || vet) && (c640 || !crKnown) && (incOk || incMaybe)){
+        add({name:'MHDC First Place', amt:'4% of the loan toward your down payment', strong: incOk && c640,
+          why:['Missouri program, forgiven after 10 years in the home', (vet && !ft) ? 'Veterans don’t need to be first-time buyers' : 'You’d qualify as a first-time buyer',
+               incOk ? 'Your income looks to be under the limit for your household size' : 'Your income may be over the standard limit, but higher limits apply in targeted areas',
+               crNote(640)].filter(Boolean)});
+      }
+    }
+    // Kansas First-Time Homebuyer
+    if(ks && ft && a.ksArea !== 'JOCO' && a.ksArea !== 'KCK' && price <= 2){
+      var kIncOk = inc === 1, kIncMaybe = inc === 2 && hh >= 4;
+      if(kIncOk || kIncMaybe){
+        add({name:'Kansas First-Time Homebuyer', amt:'15–20% of the price as a 0% second loan', strong: kIncOk,
+          why:['No monthly payment, forgiven after 10 years', 'You’d need at least 1% of the price from your own funds',
+               kIncOk ? 'Your income looks to be within the limit' : 'Close on income, depends on your exact household income',
+               a.state === 'BOTH' ? 'Not available in Johnson County or inside KCK city limits' : ''].filter(Boolean)});
+      }
+    }
+    // VA
+    if(vet){ add({name:'VA loan', amt:'$0 down', strong:true, why:['No monthly mortgage insurance','Can be used more than once','Pairs with MHDC First Place on the Missouri side']}); }
+    // USDA
+    var uIncOk = (hh <= 4 && inc <= 3) || (hh >= 5 && inc <= 4);
+    if(uIncOk && price <= 3){
+      add({name:'USDA Guaranteed', amt:'$0 down', strong:false, maybe:'Depends on the address',
+        why:['The home has to be in a USDA-eligible area. Many KC suburbs and outer-ring towns are','Your income looks to be under the limit for your household size','First-time status not required']});
+    }
+    // FHA zero down
+    if(price <= 3 && (lowSave || save === 2)){
+      if(c640 || !crKnown){
+        add({name:'FHA Zero Down: Forgivable', amt:'Covers the 3.5% FHA down payment', strong: c640,
+          why:['0% second loan with no monthly payment, forgiven after 5 years','No income limit and no first-time buyer rule', crNote(640) || '640+ credit, which you have'].filter(Boolean)});
+      }
+      if(c660){
+        add({name:'FHA Zero Down: Repayable', amt:'3.5% or 5% toward down payment and closing costs', strong:false,
+          why:['Repaid monthly as a second loan, so it adds to your payment','Can also help with closing costs','No income limit and no first-time buyer rule']});
+      }
+    }
+    // HomeReady / Home Possible
+    if(inc <= 2 && (cr >= 640 || !crKnown) && price <= 3){
+      add({name:'HomeReady or Home Possible', amt:'3% down', strong: inc === 1,
+        why:['Conventional loan with reduced mortgage insurance','Income limit is 80% of the area median (about $90,560)','Can be paired with down payment help']});
+    }
+    // Chase Community Lending (always location-based)
+    if(price <= 3){
+      add({name:'Chase Community Lending', amt:'Neighborhood pricing', strong:false, maybe:'Depends on the address',
+        why:['Based on the home’s neighborhood, not your income','Check any address on Jason’s site to see if it’s in a designated area']});
+    }
+    // FHA standard
+    if((cr > 0 && cr < 680) || (lowSave && price <= 3)){
+      add({name:'FHA', amt:'3.5% down', strong: cr >= 580, why:['Flexible credit guidelines','Gift funds from family can cover the down payment', mo ? 'Pairs with MHDC First Place in Missouri' : ''].filter(Boolean)});
+    }
+    // Jumbo
+    if(price >= 4){
+      add({name: price === 5 ? 'Jumbo' : 'Conventional or jumbo', amt: 'Loans over $832,750', strong: price === 5,
+        why:['2026 conforming limit for the KC metro is $832,750', 'Options for buyers whose wealth sits in investment accounts, not just W-2 pay','Jason works closely with wealth managers on structure']});
+      if(save <= 2) notes.push('At this price range, down payment help programs mostly don’t apply because of price limits. Jason can walk through low-down-payment conventional options.');
+    }
+
+    if(cr > 0 && cr < 640) notes.unshift('Most down payment help programs need a 640 credit score. That’s often closer than people think. Jason can map out what would move your score and how long it might take, at no cost.');
+    if(inc === 5 && price <= 3) notes.push('Your income is above the limits for the income-based programs, but location-based and no-income-limit options can still help.');
+
+    // strong first, then others; dedupe
+    out.sort(function(x,y){ return (y.strong?1:0) - (x.strong?1:0); });
+    return {list: out.slice(0,6), notes: notes};
+  }
+
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  var lastResult = null;
+  function render(res){
+    lastResult = res;
+    var sum = document.getElementById('sum');
+    sum.textContent = res.list.length
+      ? 'Based on your answers, ' + res.list.length + (res.list.length === 1 ? ' option looks' : ' options look') + ' worth exploring. This isn’t an approval. It’s a starting point for a real conversation.'
+      : 'Nothing jumps out from these answers alone, but that doesn’t mean you’re out of options. Jason can look at the details a quiz can’t.';
+    var html = res.notes.map(function(n){ return '<p class="note">' + esc(n) + '</p>'; }).join('');
+    html += res.list.map(function(m){
+      var tag = m.maybe ? '<span class="tag maybe">' + esc(m.maybe) + '</span>' : (m.strong ? '<span class="tag">Looks like a fit</span>' : '<span class="tag maybe">Worth checking</span>');
+      return '<div class="match">' + tag + '<h3>' + esc(m.name) + '</h3><p class="amt">' + esc(m.amt) + '</p><ul>' + m.why.map(function(w){ return '<li>' + esc(w) + '</li>'; }).join('') + '</ul></div>';
+    }).join('');
+    document.getElementById('matches').innerHTML = html;
+  }
+
+  // ---------- lead form ----------
+  var labels = {
+    state:{MO:'Missouri',KS:'Kansas',BOTH:'Not sure / both'},
+    ksArea:{JOCO:'Johnson County',KCK:'KCK city limits',OTHER:'Other Kansas',"":'-'},
+    first:{Y:'Yes',N:'No'}, vet:{Y:'Yes',N:'No'}, hh:{2:'1-2',4:'3-4',5:'5+'},
+    inc:{1:'Under $80k',2:'$80k-$113k',3:'$113k-$130k',4:'$130k-$172k',5:'Over $172k'},
+    credit:{720:'720+',680:'680-719',660:'660-679',640:'640-659',580:'Under 640',0:'Not sure'},
+    price:{1:'Under $250k',2:'$250k-$400k',3:'$400k-$650k',4:'$650k-$900k',5:'Over $900k'},
+    save:{0:'Little/none',1:'1-3%',2:'3-10%',3:'10%+'}
+  };
+  function readable(){
+    var o = {};
+    Object.keys(labels).forEach(function(k){ o[k] = (labels[k][answers[k]] !== undefined ? labels[k][answers[k]] : answers[k]) || '-'; });
+    return o;
+  }
+
+  var lf = document.getElementById('leadForm'), err = document.getElementById('err'), send = document.getElementById('send');
+  lf.addEventListener('submit', function(e){
+    e.preventDefault(); err.textContent = '';
+    var d = Object.fromEntries(new FormData(lf).entries());
+    if(!d.name || !d.phone || !d.email || !d.timeline){ err.textContent = 'Please fill in your name, phone, email and timeline.'; return; }
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)){ err.textContent = 'That email doesn’t look quite right.'; return; }
+    if(!d.consent){ err.textContent = 'Please check the box so Jason can reach out.'; return; }
+    var r = readable();
+    var payload = {
+      funnel:'DPA quiz', submitted:new Date().toISOString(), name:d.name, phone:d.phone, email:d.email, timeline:d.timeline,
+      agent:d.agent || '', referral_agent:src.agent, source:src.src, listing:src.listing,
+      state:r.state, ks_area:r.ksArea, first_time:r.first, veteran:r.vet, household:r.hh, income:r.inc, credit:r.credit, price:r.price, savings:r.save,
+      matches:(lastResult ? lastResult.list.map(function(m){ return m.name; }).join('; ') : ''), consent:'Yes', page:location.href
+    };
+    if(LEAD_ENDPOINT){
+      send.disabled = true; send.textContent = 'Sending…';
+      fetch(LEAD_ENDPOINT, {method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(payload)})
+        .then(done).catch(function(){ send.disabled = false; send.textContent = 'Send my results to Jason'; err.textContent = 'Something went wrong. Please call or text (913) 687-7247.'; });
+    } else {
+      var body = Object.keys(payload).map(function(k){ return k.replace(/_/g,' ') + ': ' + payload[k]; }).join('\n');
+      location.href = 'mailto:' + JASON_EMAIL + '?subject=' + encodeURIComponent('Down payment quiz results: ' + d.name) + '&body=' + encodeURIComponent(body);
+      done();
+    }
+  });
+  function done(){ document.getElementById('formWrap').hidden = true; document.getElementById('done').classList.add('on'); track('lead_submit'); }
+
+  document.getElementById('redo').addEventListener('click', function(){
+    form.reset(); idx = 0; form.hidden = false; document.getElementById('results').hidden = true; show(); window.scrollTo({top:0});
+  });
+
+  function track(ev){ try{ if(window.gtag) window.gtag('event', ev, {funnel:'dpa_quiz'}); }catch(e){} }
+
+  show();
+})();
+</script>
+</body>
+</html>
