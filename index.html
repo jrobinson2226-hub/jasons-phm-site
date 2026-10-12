@@ -80,8 +80,6 @@ section[id]{scroll-margin-top:80px}
 .family .fam{grid-area:fam}.family .t1{grid-area:t1}.family .t2{grid-area:t2}.family .cpl{grid-area:cpl;justify-self:center;width:min(100%,360px)}
 .family figure{margin:0;position:relative;isolation:isolate}
 .family figure img{width:100%;height:auto;display:block;border-radius:8px;box-shadow:0 14px 34px rgba(0,30,60,.18)}
-.family .fam::before,.family .cpl::before{content:"";position:absolute;inset:14px -14px -14px 14px;border:3px solid var(--cyan);border-radius:8px;z-index:-1}
-.family .cpl::before{inset:-14px 14px 14px -14px}
 .family .t1,.family .t2{display:grid;gap:14px;max-width:60ch}
 .family .txt p{font-size:17px}
 @media (max-width:820px){.family{grid-template-columns:1fr;grid-template-areas:"t1" "fam" "t2" "cpl";gap:26px}.family .cpl{width:min(80%,340px)}}
@@ -324,7 +322,6 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
     <div class="txt t2">
       <p>I've been married 24 years (my wife deserves most of the credit) and we have three kids, so our calendar is a color-coded map of volleyball, basketball and flag football. I spent years coaching youth sports, but these days you can find me in the stands with a lukewarm concession-stand coffee, trying my best to sit back and let the coach coach. On a free weekend, I'm with the Rotary Club of Johnson County Trailblazers, chasing a golf ball I probably sliced into the trees, or at Lake of the Ozarks with the family.</p>
       <p>Before mortgages, I spent 10 years in nonprofit development. I loved meeting people and solving problems, and lending threw in the math. Turns out I like the math. Fun fact: I was a DJ in college. I still take requests, they just sound more like "Can we close by Friday?" Go Chiefs, Royals, Sporting KC and KU!</p>
-      <div class="chips"><span>Married 24 years</span><span>3 kids</span><span>Proud sports dad</span><span>Olathe West Owls</span><span>Rotary Trailblazers</span><span>Lake of the Ozarks</span><span>Former college DJ</span></div>
     </div>
     <figure class="cpl"><img src="img/couple.jpg" width="900" height="1200" alt="Jason Robinson and his wife" loading="lazy"></figure>
   </div>
