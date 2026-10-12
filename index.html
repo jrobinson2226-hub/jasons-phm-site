@@ -75,6 +75,44 @@ section{padding-block:48px}
 .buyer select,.buyer input{padding:8px 10px;border:0;border-radius:3px;color:#1c252c;background:#fff;font-size:15px}
 .buyer input{width:140px;flex:0 0 140px}
 section[id]{scroll-margin-top:80px}
+/* why section */
+.why{background:var(--surface-alt)}
+.why .intro{margin-bottom:22px}
+.why-me{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;margin-bottom:34px}
+@media (max-width:820px){.why-me{grid-template-columns:1fr}}
+.why-me div{border-top:3px solid var(--rule);padding-top:10px;display:grid;gap:4px;align-content:start}
+.why-me b{font-size:17px;color:var(--heading)}
+.why-me p{font-size:15px}
+.phm-band{background:var(--navy);color:#fff;padding:26px 28px;display:grid;gap:18px;margin-bottom:28px}
+.phm-band h3{color:#fff;font-size:32px}
+.phm-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px 24px}
+@media (max-width:900px){.phm-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.phm-grid{grid-template-columns:1fr}}
+.phm-grid div{display:grid;gap:3px;align-content:start}
+.phm-grid b{font-size:16px}
+.phm-grid span{font-size:14px;line-height:1.45;color:#dbe7ef}
+.edge-head{display:grid;gap:6px;margin-bottom:14px;max-width:72ch}
+.edge-head h3 .hi{color:var(--blue)}
+.edge{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+@media (max-width:760px){.edge{grid-template-columns:1fr}}
+.edge-tile{background:var(--field);border:1px solid var(--line);padding:18px 20px;display:grid;gap:8px;align-content:start}
+.edge-tile.dark{background:var(--navy);border-color:var(--navy);color:#fff}
+.edge-tile .t{font-family:var(--display);font-size:28px;line-height:1;color:var(--heading)}
+.edge-tile.dark .t{color:#fff}
+.edge-tile p{font-size:15px}
+.edge-tile.dark p{color:#dbe7ef}
+.split{display:flex;gap:18px}
+.split div{display:grid}
+.split .amt{font-family:var(--display);font-size:36px;line-height:1;color:#fff}
+.split small{font-size:13px;color:#dbe7ef}
+.edge-mini{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:18px}
+@media (max-width:760px){.edge-mini{grid-template-columns:1fr}}
+.edge-mini div{border-top:3px solid var(--rule);padding-top:8px;display:grid;gap:3px}
+.edge-mini b{font-size:16px;color:var(--heading)}
+.edge-mini p{font-size:15px}
+.foot{margin-top:18px;font-size:11.5px;line-height:1.4;color:var(--ink-muted);display:grid;gap:3px;max-width:110ch}
+sup{font-size:.65em;line-height:0}
+
 .news{border-bottom:1px solid var(--line);padding-block:26px 30px}
 .news-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
 .news-head h2{font-size:30px}
@@ -243,6 +281,56 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
   <div class="wrap">
     <div class="news-head"><h2>Latest <span class="hi">updates</span></h2><span class="note">From Jason</span></div>
     <ul class="news-list" id="news-list"></ul>
+  </div>
+</section>
+
+<section class="why" id="why">
+  <div class="wrap">
+    <div class="intro">
+      <span class="label">Why work with me</span>
+      <h2>A smoother path to <span class="hi">the closing table</span></h2>
+    </div>
+    <div class="why-me">
+      <div><b>Stronger offers</b><p>I request a fully underwritten CompetitivEdge℠ approval on every application, so you shop with verified numbers and sellers take your offer seriously.</p></div>
+      <div><b>A program for nearly every buyer</b><p>Conventional, FHA, VA, jumbo and renovation loans, down payment assistance, and special financing tied to specific Kansas City neighborhoods.</p></div>
+      <div><b>Clear, steady communication</b><p>Side-by-side loan options up front, in-person meetings for first-time buyers, and regular updates for you and your agent until closing day.</p></div>
+    </div>
+
+    <div class="phm-band">
+      <h3>Why Prosperity Home Mortgage</h3>
+      <div class="phm-grid">
+        <div><b>Backed by Berkshire Hathaway</b><span>Part of the HomeServices of America family, a Berkshire Hathaway affiliate.</span></div>
+        <div><b>Award-winning satisfaction</b><span>Ranked #1 in customer satisfaction among mortgage originators by J.D. Power (2024 U.S. Mortgage Origination Satisfaction Study).</span></div>
+        <div><b>In-house, start to finish</b><span>Regional teams of processors, underwriters and closers keep decisions close to home.</span></div>
+        <div><b>National strength, local service</b><span>500+ Mortgage Consultants lending in 49 jurisdictions, with me right here in Kansas City.</span></div>
+      </div>
+    </div>
+
+    <div class="edge-head">
+      <h3>The <span class="hi">CompetitivEdge℠</span> advantage</h3>
+      <p>CompetitivEdge is Prosperity's program for buyers, sellers and agents. Instead of a standard pre-approval, eligible buyers shop with a fully underwritten loan commitment.</p>
+    </div>
+    <div class="edge">
+      <div class="edge-tile">
+        <div class="t">HomeSURE℠ Advantage<sup>1</sup></div>
+        <p>An underwriter reviews your verified income, assets and credit before you shop, so your offer reads closer to a cash buyer's.</p>
+      </div>
+      <div class="edge-tile dark">
+        <div class="t">$30,000 On-Time Closing Guarantee<sup>2</sup></div>
+        <p>If an eligible HomeSURE Advantage loan doesn't close on time, Prosperity pays:</p>
+        <div class="split"><div><span class="amt">$15,000</span><small>to the seller</small></div><div><span class="amt">$15,000</span><small>to the brokerage</small></div></div>
+      </div>
+    </div>
+    <div class="edge-mini">
+      <div><b>Lock, Shop &amp; Home<sup>3</sup></b><p>Lock a rate for up to 90 days while you shop, or float and lock later.</p></div>
+      <div><b>REFIne Your Rate<sup>4</sup></b><p>If rates drop, refinance with Prosperity within 3 years with no loan origination fee.</p></div>
+    </div>
+    <div class="foot">
+      <div><b>1</b> HomeSURE Advantage is not a final loan approval or a guarantee to lend. Final approval requires an acceptable appraisal and title commitment after an offer is accepted.</div>
+      <div><b>2</b> Available only on HomeSURE Advantage-designated conventional, FHA and VA loans with a written Commitment Letter issued before the sales contract is fully ratified. Not available on renovation, co-op, bond, grant or down payment assistance loans; jumbo at Prosperity's discretion. Appraisal must be approved at least 10 business days and loan conditions satisfied at least 3 business days before closing; loan must close by the Commitment Agreement's expiration date. Void if the contract is terminated, the settlement date is extended, the borrower's finances or loan terms materially change, or closing is delayed by emergencies or natural disasters. Limited to the transaction and property identified.</div>
+      <div><b>3</b> Not available on bond, jumbo or renovation loans; longer locks may carry additional fees. One float-down within 7 days of closing requires an upfront, non-refundable fee of 0.25% of the loan amount paid at initial lock.</div>
+      <div><b>4</b> Refinance must close within 36 months of the original closing, generally after 180 days, with a net tangible benefit. Lender credit capped per program terms. Program terms, dates and availability are subject to change; confirm current terms with your loan officer. Not all borrowers will qualify. This is not a commitment to lend.</div>
+    </div>
   </div>
 </section>
 
