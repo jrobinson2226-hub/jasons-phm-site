@@ -75,6 +75,30 @@ section{padding-block:48px}
 .buyer select,.buyer input{padding:8px 10px;border:0;border-radius:3px;color:#1c252c;background:#fff;font-size:15px}
 .buyer input{width:140px;flex:0 0 140px}
 section[id]{scroll-margin-top:80px}
+/* family + photo bands */
+.family{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:40px;align-items:center}
+@media (max-width:820px){.family{grid-template-columns:1fr;gap:22px}}
+.family img{width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;object-position:50% 40%;display:block}
+.family .txt{display:grid;gap:14px;max-width:60ch}
+.family .txt p{font-size:17px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips span{border:1px solid var(--line);background:var(--surface-alt);padding:5px 12px;font-size:14px;font-weight:700;color:var(--heading)}
+.band{position:relative;margin:0}
+.band img{width:100%;height:clamp(240px,38vw,460px);object-fit:cover;display:block}
+.band figcaption{position:absolute;left:0;bottom:0;right:0;padding:40px 20px 18px;background:linear-gradient(to top,rgba(0,38,61,.85),rgba(0,38,61,0));color:#fff}
+.band figcaption .wrap{display:grid;gap:2px}
+.band figcaption b{font-family:var(--display);font-weight:400;font-size:clamp(28px,4vw,42px);line-height:1;letter-spacing:.5px}
+.band figcaption span{font-size:14px;color:#d6e6f0}
+.duo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0}
+@media (max-width:640px){.duo{grid-template-columns:1fr}}
+.duo figure{position:relative;margin:0}
+.duo img{width:100%;height:clamp(220px,30vw,380px);object-fit:cover;display:block}
+.duo figcaption{position:absolute;left:0;right:0;bottom:0;padding:30px 20px 14px;background:linear-gradient(to top,rgba(0,38,61,.85),rgba(0,38,61,0));color:#fff;font-weight:700;font-size:15px}
+.duo-head{background:var(--navy);color:#fff;padding-block:18px}
+.duo-head h2{color:#fff;font-size:clamp(28px,4vw,38px)}
+.duo-head h2 .hi{color:var(--cyan)}
+.credits{font-size:11px;color:var(--ink-muted);margin-top:10px}
+
 /* why section */
 .why{background:var(--surface-alt)}
 .why .intro{margin-bottom:22px}
@@ -285,12 +309,30 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
 </div>
 
 <main>
+<section id="family">
+  <div class="wrap family">
+    <img src="img/family.jpg" alt="Jason Robinson with his wife and three kids" loading="lazy" width="1400" height="1050">
+    <div class="txt">
+      <span class="label">Get to know me</span>
+      <h2>Life outside <span class="hi">the office</span></h2>
+      <p>I've been married for 24 years, and we have three kids. Most of our time goes to running between volleyball, basketball and flag football games, and we wouldn't have it any other way.</p>
+      <p>I'm a member of my local Rotary club, and when I get a free weekend, you'll usually find me on the golf course or at the lake with my family.</p>
+      <div class="chips"><span>Married 24 years</span><span>3 kids</span><span>Rotary member</span><span>Golf &amp; lake days</span></div>
+    </div>
+  </div>
+</section>
+
 <section class="news" id="updates" hidden>
   <div class="wrap">
     <div class="news-head"><h2>Latest <span class="hi">updates</span></h2><span class="note">From Jason</span></div>
     <ul class="news-list" id="news-list"></ul>
   </div>
 </section>
+
+<figure class="band">
+  <img src="https://images.unsplash.com/photo-1768233442086-c92d4519c9ea?auto=format&fit=crop&w=1600&q=70" srcset="https://images.unsplash.com/photo-1768233442086-c92d4519c9ea?auto=format&fit=crop&w=640&q=70 640w, https://images.unsplash.com/photo-1768233442086-c92d4519c9ea?auto=format&fit=crop&w=1024&q=70 1024w, https://images.unsplash.com/photo-1768233442086-c92d4519c9ea?auto=format&fit=crop&w=1600&q=70 1600w, https://images.unsplash.com/photo-1768233442086-c92d4519c9ea?auto=format&fit=crop&w=2200&q=70 2200w" sizes="100vw" alt="Union Station and the downtown Kansas City skyline from the Liberty Memorial lawn" loading="lazy">
+  <figcaption><div class="wrap"><b>Proud to call Kansas City home</b><span>Union Station and the downtown skyline</span></div></figcaption>
+</figure>
 
 <section class="why" id="why">
   <div class="wrap">
@@ -341,6 +383,18 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
     </div>
   </div>
 </section>
+
+<div class="duo-head"><div class="wrap"><h2>Lending on both sides of <span class="hi">State Line</span></h2></div></div>
+<div class="duo">
+  <figure>
+    <img src="https://images.unsplash.com/photo-1663462407514-05fef6ef8c54?auto=format&fit=crop&w=1200&q=70" srcset="https://images.unsplash.com/photo-1663462407514-05fef6ef8c54?auto=format&fit=crop&w=640&q=70 640w, https://images.unsplash.com/photo-1663462407514-05fef6ef8c54?auto=format&fit=crop&w=1024&q=70 1024w, https://images.unsplash.com/photo-1663462407514-05fef6ef8c54?auto=format&fit=crop&w=1600&q=70 1600w, https://images.unsplash.com/photo-1663462407514-05fef6ef8c54?auto=format&fit=crop&w=2200&q=70 2200w" sizes="(max-width:640px) 100vw, 50vw" alt="The Liberty Memorial tower in Kansas City, Missouri" loading="lazy">
+    <figcaption>Kansas City, Missouri</figcaption>
+  </figure>
+  <figure>
+    <img src="https://images.unsplash.com/photo-1773798883990-0ace07ca1420?auto=format&fit=crop&w=1200&q=70" srcset="https://images.unsplash.com/photo-1773798883990-0ace07ca1420?auto=format&fit=crop&w=640&q=70 640w, https://images.unsplash.com/photo-1773798883990-0ace07ca1420?auto=format&fit=crop&w=1024&q=70 1024w, https://images.unsplash.com/photo-1773798883990-0ace07ca1420?auto=format&fit=crop&w=1600&q=70 1600w, https://images.unsplash.com/photo-1773798883990-0ace07ca1420?auto=format&fit=crop&w=2200&q=70 2200w" sizes="(max-width:640px) 100vw, 50vw" alt="Downtown Shawnee sign in Shawnee, Kansas" loading="lazy">
+    <figcaption>Shawnee, Kansas</figcaption>
+  </figure>
+</div>
 
 <section id="check">
   <div class="wrap check-intro">
@@ -547,6 +601,7 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
 <footer>
   <div class="wrap">
     <p class="disclaim">This tool is a guide only. Address matching and map boundaries come from third-party services (Esri, USDA Rural Development, U.S. Census Bureau, MHDC) and are not guaranteed. Program eligibility, income limits and purchase price limits change and are confirmed during underwriting. Geographic eligibility is not a credit decision or a commitment to lend. Income and price limits: USDA Section 502 Guaranteed FY2026 limits (USDA Rural Development income eligibility tool); HomeReady/Home Possible at 80% of the 2026 FFIEC median family income for the Kansas City MSA ($113,200); MHDC First Place 2026 limits (effective 5/1/2026 and 5/6/2026); Kansas First-Time Homebuyer at HUD 80% limits for the Kansas City area. USDA uses adjusted income, so actual eligibility can differ. Chase Community Lending neighborhoods reflect Chase's census tract tiers as of October 2026. Tiers are subject to change, and final eligibility is determined by Chase. Income you enter stays in your browser and is not sent or saved.</p>
+    <p class="credits">Kansas City photos via Unsplash: CK Hicks, Far Chinberdiev and Austin Davis.</p>
     <div class="comp">
       <img class="logo-light" src="img/ehl.png" alt="Equal Housing Lender">
       <img class="logo-dark" src="img/ehl-white.png" alt="Equal Housing Lender">
