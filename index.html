@@ -946,9 +946,9 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
     document.querySelectorAll('#cards .card').forEach(function(card){ card.hidden = !(f==='all' || card.dataset.k.split(' ').indexOf(f)>-1); });
   }); });
 
-  var qs = new URLSearchParams(location.search), pre = qs.get('address');
-  if(qs.get('price')){ setWho('agent'); $('#price').value = money(parseInt(qs.get('price'),10)||0).replace('$0',''); }
-  else if(qs.get('budget')){ $('#budget').value = qs.get('budget'); }
+  var params = new URLSearchParams(location.search), pre = params.get('address');
+  if(params.get('price')){ setWho('agent'); $('#price').value = money(parseInt(params.get('price'),10)||0).replace('$0',''); }
+  else if(params.get('budget')){ $('#budget').value = params.get('budget'); }
   if(pre){ $('#q').value = pre; $('#search').requestSubmit ? $('#search').requestSubmit() : $('#search').dispatchEvent(new Event('submit')); }
 })();
 </script>
