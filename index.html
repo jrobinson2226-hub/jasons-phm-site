@@ -426,7 +426,7 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
   <div class="wrap check-intro">
     <span class="label">For Kansas City buyers and agents</span>
     <h2>Does this house <span class="hi">qualify?</span></h2>
-    <p class="lead">Type in any Kansas City address. We check it against USDA, Missouri and Kansas down payment programs, Chase Community Lending and more, right here on this page. Add household size and income to see which income-based programs fit. Don't have a house picked out yet? <a href="quiz.html">Take the 2-minute quiz</a> to see which programs may fit you.</p>
+    <p class="lead">Type in any Kansas City address. We check it against USDA, Missouri and Kansas down payment programs, Chase Community Lending and more, right here on this page. Add household size, income and the list price to see which programs fit this home. Don't have a house picked out yet? <a href="quiz.html">Take the 2-minute quiz</a> to see which programs may fit you.</p>
     <form class="search" id="search" role="search">
       <label for="q" class="label" style="position:absolute;left:-9999px">Property address</label>
       <input id="q" name="q" type="text" autocomplete="street-address" placeholder="Street address, city, state" required>
@@ -437,6 +437,8 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
         <select id="hh"><option value="">Choose</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select>
         <label for="inc">Annual household income</label>
         <input id="inc" type="text" inputmode="numeric" placeholder="$85,000" autocomplete="off">
+        <label for="price">List price</label>
+        <input id="price" type="text" inputmode="numeric" placeholder="$350,000" autocomplete="off">
       </div>
     </form>
     <p class="note">Or click anywhere on the map below. Results are a starting point, not an approval.</p>
@@ -626,7 +628,7 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
 
 <footer>
   <div class="wrap">
-    <p class="disclaim">This tool is a guide only. Address matching and map boundaries come from third-party services (Esri, USDA Rural Development, U.S. Census Bureau, MHDC) and are not guaranteed. Program eligibility, income limits and purchase price limits change and are confirmed during underwriting. Geographic eligibility is not a credit decision or a commitment to lend. Income and price limits: USDA Section 502 Guaranteed FY2026 limits (USDA Rural Development income eligibility tool); HomeReady/Home Possible at 80% of the 2026 FFIEC median family income for the Kansas City MSA ($113,200); MHDC First Place 2026 limits (effective 5/1/2026 and 5/6/2026); Kansas First-Time Homebuyer at HUD 80% limits for the Kansas City area. USDA uses adjusted income, so actual eligibility can differ. Chase Community Lending neighborhoods reflect Chase's census tract tiers as of October 2026. Tiers are subject to change, and final eligibility is determined by Chase. Income you enter stays in your browser and is not sent or saved.</p>
+    <p class="disclaim">This tool is a guide only. Address matching and map boundaries come from third-party services (Esri, USDA Rural Development, U.S. Census Bureau, MHDC) and are not guaranteed. Program eligibility, income limits and purchase price limits change and are confirmed during underwriting. Geographic eligibility is not a credit decision or a commitment to lend. Income and price limits: USDA Section 502 Guaranteed FY2026 limits (USDA Rural Development income eligibility tool); HomeReady/Home Possible at 80% of the 2026 FFIEC median family income for the Kansas City MSA ($113,200); MHDC First Place 2026 limits (effective 5/1/2026 and 5/6/2026); Kansas First-Time Homebuyer at HUD 80% limits for the Kansas City area. 2026 loan limits: $832,750 conforming (FHFA) and $541,287 FHA (HUD) for one-unit homes in Kansas City area counties. USDA uses adjusted income, so actual eligibility can differ. Chase Community Lending neighborhoods reflect Chase's census tract tiers as of October 2026. Tiers are subject to change, and final eligibility is determined by Chase. Income you enter stays in your browser and is not sent or saved.</p>
     <p class="credits">Kansas City photos via Unsplash: CK Hicks and Far Chinberdiev. Arrowhead Stadium aerial by <a href="https://commons.wikimedia.org/wiki/File:Aerial_view_of_Arrowhead_Stadium_08-31-2013_crop.jpg">Ichabod</a>, <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>, via Wikimedia Commons.</p>
     <div class="comp">
       <img class="logo-light" src="img/ehl.png" alt="Equal Housing Lender">
@@ -776,11 +778,15 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
   var MHDC_PRICE = {non:566354, tgt:692211};
   // Kansas First-Time Homebuyer: HUD 80% (HOME) limits, Kansas City HMFA, households of 1-8
   var KS80 = [62400,71300,80200,89100,96250,103400,110500,117650];
+  // 2026 loan limits, one-unit, all KC-area counties: conforming (FHFA) and FHA (HUD floor)
+  var CONF_LIMIT = 832750, FHA_LIMIT = 541287;
+  var FHA_MAX_PRICE = Math.floor(FHA_LIMIT/0.965/1000)*1000; // base loan at 3.5% down
 
   function money(n){ return '$'+Math.round(n).toLocaleString('en-US'); }
   function buyer(){
     var sz = parseInt($('#hh').value,10); var inc = parseInt(String($('#inc').value).replace(/[^\d]/g,''),10);
-    return {size: sz>0 ? sz : null, inc: inc>0 ? inc : null};
+    var pr = parseInt(String($('#price').value).replace(/[^\d]/g,''),10);
+    return {size: sz>0 ? sz : null, inc: inc>0 ? inc : null, price: pr>0 ? pr : null};
   }
 
   function item(state, name, why){
@@ -791,11 +797,12 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
   function esc(s){ var d=document.createElement('div'); d.textContent=s==null?'':String(s); return d.innerHTML; }
 
   function render(d){
-    var b = buyer(), sz = b.size, inc = b.inc, cf = d.geoid.slice(0,5);
+    var b = buyer(), sz = b.size, inc = b.inc, lp = b.price, cf = d.geoid.slice(0,5);
     var hhTxt = sz ? ('a household of '+sz) : 'your household';
     var h = '<div class="where"><b>'+esc(d.label)+'</b><div class="facts">'+
       (d.county?'<span>'+esc(d.county)+'</span>':'')+(d.tractName?'<span>Census tract '+esc(d.tractName)+'</span>':'')+
-      (sz||inc ? '<span>'+(sz?sz+'-person household':'')+(sz&&inc?', ':'')+(inc?money(inc)+' income':'')+'</span>' : '')+'</div></div>';
+      (sz||inc ? '<span>'+(sz?sz+'-person household':'')+(sz&&inc?', ':'')+(inc?money(inc)+' income':'')+'</span>' : '')+
+      (lp?'<span>'+money(lp)+' list price</span>':'')+'</div></div>';
     if(!d.st){
       out.innerHTML = h + '<div class="empty"><b>This address is outside Kansas and Missouri.</b><span>Jason lends in Kansas and Missouri. Try a Kansas City area address, or call him to talk through your options.</span></div>';
       return;
@@ -825,7 +832,9 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
       var mi = (MHDC_INC[cf] || MHDC_INC.def)[tgt?'tgt':'non'];
       var price = MHDC_PRICE[tgt?'tgt':'non'];
       var limTxt = 'Income limit '+money(mi[0])+' for 1–2 people, '+money(mi[1])+' for 3 or more. Price limit '+money(price)+'.';
-      if(tgt){
+      if(lp && lp > price){
+        no.push(item('no','MHDC First Place','The list price is over the '+money(price)+' price limit'+(tgt?' for this targeted area':'')+'.'));
+      } else if(tgt){
         if(inc && sz){
           var l2 = sz<=2?mi[0]:mi[1];
           if(inc<=l2) yes.push(item('yes','MHDC First Place','Targeted area, so you don\'t need to be a first-time buyer. 4% down payment help, forgiven after 10 years. Your income is under the '+money(l2)+' limit.'));
@@ -862,9 +871,12 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
     else no.push(item('no','Chase Community Lending','This address isn\'t in one of Chase\'s Community Lending neighborhoods.'));
 
     // Available anywhere
-    info.push(item('info','FHA Zero Down','Covers the 3.5% FHA down payment. Forgivable after 5 years or repayable options. No income limit and no first-time buyer requirement.'));
+    if(lp && lp > FHA_MAX_PRICE) no.push(item('no','FHA and FHA Zero Down','The 2026 FHA loan limit is '+money(FHA_LIMIT)+', so FHA fits homes up to about '+money(FHA_MAX_PRICE)+' with the minimum down payment.'));
+    else info.push(item('info','FHA Zero Down','Covers the 3.5% FHA down payment. Forgivable after 5 years or repayable options. No income limit and no first-time buyer requirement.'));
+    if(lp) info.push(item('info','Conventional', lp*0.95 <= CONF_LIMIT ? 'Low down payment options up to the '+money(CONF_LIMIT)+' conforming loan limit, with seller-paid rate buydowns available.' : 'Conforming financing if the loan stays at or under '+money(CONF_LIMIT)+' (about '+money(lp-CONF_LIMIT)+' or more down).'));
     info.push(item('info','VA','$0 down for eligible veterans and service members.'));
-    info.push(item('info','Jumbo','For loan amounts over $832,750, including options for buyers with significant investment assets.'));
+    if(lp && lp <= CONF_LIMIT) no.push(item('no','Jumbo','At this price the loan stays under the '+money(CONF_LIMIT)+' conforming limit, so jumbo isn\'t needed.'));
+    else info.push(item('info','Jumbo','For loan amounts over '+money(CONF_LIMIT)+', including options for buyers with significant investment assets.'));
 
     var addrLine = d.label;
     var summary = 'Hi Jason, I checked ' + addrLine + ' on your Program Finder. Can we talk about which programs fit?';
@@ -873,19 +885,19 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
     h += (yes.length?'<span class="label">'+(inc&&sz?'Looks like a match':'Qualifies by location')+'</span><ul class="list">'+yes.join('')+'</ul>':'') +
          '<span class="label">Also available in '+(d.st==='MO'?'Missouri':'Kansas')+'</span><ul class="list">'+info.join('')+'</ul>' +
          (no.length?'<span class="label">Not a match for this home</span><ul class="list">'+no.join('')+'</ul>':'') +
-         (inc&&sz ? '' : '<p class="note">Add household size and income above the search box to see which income-based programs fit.</p>') +
+         (inc&&sz&&lp ? '' : '<p class="note">Add household size, income and list price above the search box for a closer match.</p>') +
          '<div class="share"><a class="apply" href="https://my.phmloans.com/register?companyGuid=1f65684a-c230-4514-a95f-1c7195b50055&amp;userGuid=f8c00be5-da7f-448c-89cb-e53c61c159dd&amp;flowGuid=68b8db59-a419-4f75-9207-f2cb951e0f14&amp;branchGuid=1da1851d-0431-47b5-b3bf-2d48549547ab" target="_blank" rel="noopener">Apply now</a><a class="btn ghost" href="'+mail+'">Email Jason about this home</a><button class="btn ghost" type="button" id="copylink">Copy link to these results</button></div>';
     out.innerHTML = h;
     var cl = document.getElementById('copylink');
     cl.addEventListener('click', function(){
-      var url = location.href.split('#')[0].split('?')[0] + '?address=' + encodeURIComponent(addrLine);
+      var url = location.href.split('#')[0].split('?')[0] + '?address=' + encodeURIComponent(addrLine) + (lp?'&price='+lp:'');
       var done = function(){ cl.textContent='Link copied'; setTimeout(function(){cl.textContent='Copy link to these results';},1800); };
       if(navigator.clipboard) navigator.clipboard.writeText(url).then(done, function(){ prompt('Copy this link:', url); });
       else prompt('Copy this link:', url);
     });
-    try{ history.replaceState(null,'','?address='+encodeURIComponent(addrLine)); }catch(e){}
+    try{ history.replaceState(null,'','?address='+encodeURIComponent(addrLine)+(lp?'&price='+lp:'')); }catch(e){}
   }
-  ['hh','inc'].forEach(function(id){ document.getElementById(id).addEventListener('change', function(){ if(last) render(last); }); });
+  ['hh','inc','price'].forEach(function(id){ document.getElementById(id).addEventListener('change', function(){ if(last) render(last); }); });
 
   // ---- Wire up ----
   $('#search').addEventListener('submit', function(e){
@@ -910,7 +922,8 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
     document.querySelectorAll('#cards .card').forEach(function(card){ card.hidden = !(f==='all' || card.dataset.k.split(' ').indexOf(f)>-1); });
   }); });
 
-  var pre = new URLSearchParams(location.search).get('address');
+  var qs = new URLSearchParams(location.search), pre = qs.get('address');
+  if(qs.get('price')) $('#price').value = money(parseInt(qs.get('price'),10)||0).replace('$0','');
   if(pre){ $('#q').value = pre; $('#search').requestSubmit ? $('#search').requestSubmit() : $('#search').dispatchEvent(new Event('submit')); }
 })();
 </script>
