@@ -185,6 +185,11 @@ sup{font-size:.65em;line-height:0}
 .check-intro .buyer{color:var(--ink-muted)}
 .check-intro .buyer label{color:var(--ink)}
 .check-intro .buyer select,.check-intro .buyer input{border:1px solid var(--line);background:var(--field);color:var(--ink)}
+.who{display:inline-flex;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.who button{border:0;background:var(--field);color:var(--ink);padding:8px 12px;font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.who button[aria-pressed="true"]{background:var(--ink);color:var(--field)}
+.pricebox{display:inline-flex;align-items:center;gap:8px}
+.pricebox[hidden]{display:none}
 .check-intro .btn.cyan{color:#00263d}
 .contact-wrap{display:flex;flex-wrap:wrap;gap:24px 48px;align-items:flex-end;justify-content:space-between}
 .contact-wrap .contact{min-width:260px}
@@ -426,7 +431,7 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
   <div class="wrap check-intro">
     <span class="label">For Kansas City buyers and agents</span>
     <h2>Does this house <span class="hi">qualify?</span></h2>
-    <p class="lead">Type in any Kansas City address. We check it against USDA, Missouri and Kansas down payment programs, Chase Community Lending and more, right here on this page. Add household size, income and the list price to see which programs fit this home. Don't have a house picked out yet? <a href="quiz.html">Take the 2-minute quiz</a> to see which programs may fit you.</p>
+    <p class="lead">Type in any Kansas City address. We check it against USDA, Missouri and Kansas down payment programs, Chase Community Lending and more, right here on this page. Add household size, income and a budget or list price to see which programs fit. Don't have a house picked out yet? <a href="quiz.html">Take the 2-minute quiz</a> to see which programs may fit you.</p>
     <form class="search" id="search" role="search">
       <label for="q" class="label" style="position:absolute;left:-9999px">Property address</label>
       <input id="q" name="q" type="text" autocomplete="street-address" placeholder="Street address, city, state" required>
@@ -437,8 +442,11 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
         <select id="hh"><option value="">Choose</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select>
         <label for="inc">Annual household income</label>
         <input id="inc" type="text" inputmode="numeric" placeholder="$85,000" autocomplete="off">
-        <label for="price">List price</label>
-        <input id="price" type="text" inputmode="numeric" placeholder="$350,000" autocomplete="off">
+        <span class="who" role="group" aria-label="I am a"><button type="button" data-who="buyer" aria-pressed="true">Buyer</button><button type="button" data-who="agent" aria-pressed="false">Agent or seller</button></span>
+        <span class="pricebox" id="box-budget"><label for="budget">Budget</label>
+        <select id="budget"><option value="">Choose</option><option value="0-300000">Under $300K</option><option value="300000-450000">$300K–$450K</option><option value="450000-560000">$450K–$560K</option><option value="560000-700000">$560K–$700K</option><option value="700000-830000">$700K–$830K</option><option value="830000-">Over $830K</option></select></span>
+        <span class="pricebox" id="box-price" hidden><label for="price">List price or estimated value</label>
+        <input id="price" type="text" inputmode="numeric" placeholder="$350,000" autocomplete="off"></span>
       </div>
     </form>
     <p class="note">Or click anywhere on the map below. Results are a starting point, not an approval.</p>
@@ -782,11 +790,19 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
   var CONF_LIMIT = 832750, FHA_LIMIT = 541287;
   var FHA_MAX_PRICE = Math.floor(FHA_LIMIT/0.965/1000)*1000; // base loan at 3.5% down
 
+  var who='buyer';
   function money(n){ return '$'+Math.round(n).toLocaleString('en-US'); }
   function buyer(){
     var sz = parseInt($('#hh').value,10); var inc = parseInt(String($('#inc').value).replace(/[^\d]/g,''),10);
-    var pr = parseInt(String($('#price').value).replace(/[^\d]/g,''),10);
-    return {size: sz>0 ? sz : null, inc: inc>0 ? inc : null, price: pr>0 ? pr : null};
+    var lo=null, hi=null, label='', param='';
+    if(who==='agent'){
+      var pr = parseInt(String($('#price').value).replace(/[^\d]/g,''),10);
+      if(pr>0){ lo=hi=pr; label=money(pr)+' list price'; param='price='+pr; }
+    } else if($('#budget').value){
+      var r=$('#budget').value.split('-'); lo=parseInt(r[0],10); hi=r[1]?parseInt(r[1],10):Infinity;
+      label=$('#budget').selectedOptions[0].text+' budget'; param='budget='+encodeURIComponent($('#budget').value);
+    }
+    return {size: sz>0 ? sz : null, inc: inc>0 ? inc : null, lo:lo, hi:hi, plabel:label, pparam:param};
   }
 
   function item(state, name, why){
@@ -797,12 +813,14 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
   function esc(s){ var d=document.createElement('div'); d.textContent=s==null?'':String(s); return d.innerHTML; }
 
   function render(d){
-    var b = buyer(), sz = b.size, inc = b.inc, lp = b.price, cf = d.geoid.slice(0,5);
+    var b = buyer(), sz = b.size, inc = b.inc, lo = b.lo, hi = b.hi, lp = lo!=null, cf = d.geoid.slice(0,5);
+    var exact = lp && lo===hi;
+    var mid = lp ? (hi===Infinity ? lo : (lo+hi)/2) : null; // budgets are judged on the middle of the range
     var hhTxt = sz ? ('a household of '+sz) : 'your household';
     var h = '<div class="where"><b>'+esc(d.label)+'</b><div class="facts">'+
       (d.county?'<span>'+esc(d.county)+'</span>':'')+(d.tractName?'<span>Census tract '+esc(d.tractName)+'</span>':'')+
       (sz||inc ? '<span>'+(sz?sz+'-person household':'')+(sz&&inc?', ':'')+(inc?money(inc)+' income':'')+'</span>' : '')+
-      (lp?'<span>'+money(lp)+' list price</span>':'')+'</div></div>';
+      (lp?'<span>'+esc(b.plabel)+'</span>':'')+'</div></div>';
     if(!d.st){
       out.innerHTML = h + '<div class="empty"><b>This address is outside Kansas and Missouri.</b><span>Jason lends in Kansas and Missouri. Try a Kansas City area address, or call him to talk through your options.</span></div>';
       return;
@@ -832,8 +850,8 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
       var mi = (MHDC_INC[cf] || MHDC_INC.def)[tgt?'tgt':'non'];
       var price = MHDC_PRICE[tgt?'tgt':'non'];
       var limTxt = 'Income limit '+money(mi[0])+' for 1–2 people, '+money(mi[1])+' for 3 or more. Price limit '+money(price)+'.';
-      if(lp && lp > price){
-        no.push(item('no','MHDC First Place','The list price is over the '+money(price)+' price limit'+(tgt?' for this targeted area':'')+'.'));
+      if(lp && mid > price){
+        no.push(item('no','MHDC First Place',(exact?'The list price is':'Most homes in this budget are')+' over the '+money(price)+' price limit'+(tgt?' for this targeted area':'')+'.'));
       } else if(tgt){
         if(inc && sz){
           var l2 = sz<=2?mi[0]:mi[1];
@@ -871,11 +889,11 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
     else no.push(item('no','Chase Community Lending','This address isn\'t in one of Chase\'s Community Lending neighborhoods.'));
 
     // Available anywhere
-    if(lp && lp > FHA_MAX_PRICE) no.push(item('no','FHA and FHA Zero Down','The 2026 FHA loan limit is '+money(FHA_LIMIT)+', so FHA fits homes up to about '+money(FHA_MAX_PRICE)+' with the minimum down payment.'));
+    if(lp && mid > FHA_MAX_PRICE) no.push(item('no','FHA and FHA Zero Down','The 2026 FHA loan limit is '+money(FHA_LIMIT)+', so FHA fits homes up to about '+money(FHA_MAX_PRICE)+' with the minimum down payment.'));
     else info.push(item('info','FHA Zero Down','Covers the 3.5% FHA down payment. Forgivable after 5 years or repayable options. No income limit and no first-time buyer requirement.'));
-    if(lp) info.push(item('info','Conventional', lp*0.95 <= CONF_LIMIT ? 'Low down payment options up to the '+money(CONF_LIMIT)+' conforming loan limit, with seller-paid rate buydowns available.' : 'Conforming financing if the loan stays at or under '+money(CONF_LIMIT)+' (about '+money(lp-CONF_LIMIT)+' or more down).'));
+    if(lp) info.push(item('info','Conventional', lo*0.95 <= CONF_LIMIT ? 'Low down payment options up to the '+money(CONF_LIMIT)+' conforming loan limit, with seller-paid rate buydowns available.' : 'Conforming financing if the loan stays at or under '+money(CONF_LIMIT)+' (about '+money(lo-CONF_LIMIT)+' or more down).'));
     info.push(item('info','VA','$0 down for eligible veterans and service members.'));
-    if(lp && lp <= CONF_LIMIT) no.push(item('no','Jumbo','At this price the loan stays under the '+money(CONF_LIMIT)+' conforming limit, so jumbo isn\'t needed.'));
+    if(lp && hi <= CONF_LIMIT) no.push(item('no','Jumbo',(exact?'At this price':'In this budget')+' the loan stays under the '+money(CONF_LIMIT)+' conforming limit, so jumbo isn\'t needed.'));
     else info.push(item('info','Jumbo','For loan amounts over '+money(CONF_LIMIT)+', including options for buyers with significant investment assets.'));
 
     var addrLine = d.label;
@@ -885,19 +903,25 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
     h += (yes.length?'<span class="label">'+(inc&&sz?'Looks like a match':'Qualifies by location')+'</span><ul class="list">'+yes.join('')+'</ul>':'') +
          '<span class="label">Also available in '+(d.st==='MO'?'Missouri':'Kansas')+'</span><ul class="list">'+info.join('')+'</ul>' +
          (no.length?'<span class="label">Not a match for this home</span><ul class="list">'+no.join('')+'</ul>':'') +
-         (inc&&sz&&lp ? '' : '<p class="note">Add household size, income and list price above the search box for a closer match.</p>') +
+         (inc&&sz&&lp ? '' : '<p class="note">Add household size, income and '+(who==='agent'?'the list price':'a budget')+' above the search box for a closer match.</p>') +
          '<div class="share"><a class="apply" href="https://my.phmloans.com/register?companyGuid=1f65684a-c230-4514-a95f-1c7195b50055&amp;userGuid=f8c00be5-da7f-448c-89cb-e53c61c159dd&amp;flowGuid=68b8db59-a419-4f75-9207-f2cb951e0f14&amp;branchGuid=1da1851d-0431-47b5-b3bf-2d48549547ab" target="_blank" rel="noopener">Apply now</a><a class="btn ghost" href="'+mail+'">Email Jason about this home</a><button class="btn ghost" type="button" id="copylink">Copy link to these results</button></div>';
     out.innerHTML = h;
     var cl = document.getElementById('copylink');
     cl.addEventListener('click', function(){
-      var url = location.href.split('#')[0].split('?')[0] + '?address=' + encodeURIComponent(addrLine) + (lp?'&price='+lp:'');
+      var url = location.href.split('#')[0].split('?')[0] + '?address=' + encodeURIComponent(addrLine) + (b.pparam?'&'+b.pparam:'');
       var done = function(){ cl.textContent='Link copied'; setTimeout(function(){cl.textContent='Copy link to these results';},1800); };
       if(navigator.clipboard) navigator.clipboard.writeText(url).then(done, function(){ prompt('Copy this link:', url); });
       else prompt('Copy this link:', url);
     });
-    try{ history.replaceState(null,'','?address='+encodeURIComponent(addrLine)+(lp?'&price='+lp:'')); }catch(e){}
+    try{ history.replaceState(null,'','?address='+encodeURIComponent(addrLine)+(b.pparam?'&'+b.pparam:'')); }catch(e){}
   }
-  ['hh','inc','price'].forEach(function(id){ document.getElementById(id).addEventListener('change', function(){ if(last) render(last); }); });
+  function setWho(w){
+    who=w;
+    document.querySelectorAll('.who button').forEach(function(x){ x.setAttribute('aria-pressed', x.dataset.who===w?'true':'false'); });
+    $('#box-budget').hidden = w!=='buyer'; $('#box-price').hidden = w!=='agent';
+  }
+  document.querySelectorAll('.who button').forEach(function(x){ x.addEventListener('click', function(){ setWho(x.dataset.who); if(last) render(last); }); });
+  ['hh','inc','price','budget'].forEach(function(id){ document.getElementById(id).addEventListener('change', function(){ if(last) render(last); }); });
 
   // ---- Wire up ----
   $('#search').addEventListener('submit', function(e){
@@ -923,7 +947,8 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
   }); });
 
   var qs = new URLSearchParams(location.search), pre = qs.get('address');
-  if(qs.get('price')) $('#price').value = money(parseInt(qs.get('price'),10)||0).replace('$0','');
+  if(qs.get('price')){ setWho('agent'); $('#price').value = money(parseInt(qs.get('price'),10)||0).replace('$0',''); }
+  else if(qs.get('budget')){ $('#budget').value = qs.get('budget'); }
   if(pre){ $('#q').value = pre; $('#search').requestSubmit ? $('#search').requestSubmit() : $('#search').dispatchEvent(new Event('submit')); }
 })();
 </script>
