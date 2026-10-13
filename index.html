@@ -1,6 +1,26 @@
 <!doctype html>
 <html lang="en">
 <head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-G0K1D53EVK"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-G0K1D53EVK');
+  // Lead click tracking: Apply Now, phone, email, home-value and quiz links
+  document.addEventListener('click', function(e){
+    var a = e.target.closest && e.target.closest('a[href]'); if(!a) return;
+    var h = a.getAttribute('href') || '', ev = null;
+    if(h.indexOf('my.phmloans.com') > -1) ev = 'apply_click';
+    else if(h.indexOf('tel:') === 0) ev = 'phone_click';
+    else if(h.indexOf('mailto:') === 0) ev = 'email_click';
+    else if(h.indexOf('opentotheoffer.com') > -1) ev = 'offer_tool_click';
+    else if(h.indexOf('phmloans.com/mortgageconsultant') > -1) ev = 'phm_profile_click';
+    else if(/quiz\.html/.test(h)) ev = 'quiz_link_click';
+    if(ev) try{ gtag('event', ev, {link_text:(a.textContent||'').trim().slice(0,60), page_path:location.pathname}); }catch(err){}
+  }, true);
+</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Jason's PHM Site | Jason Robinson, Sr. Loan Officer, Prosperity Home Mortgage</title>
@@ -871,6 +891,7 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
   $('#search').addEventListener('submit', function(e){
     e.preventDefault();
     var q = $('#q').value.trim(); if(!q) return;
+    try{ if(window.gtag) gtag('event','address_check',{page_path:location.pathname}); }catch(err){}
     setStatus('Finding that address…');
     document.getElementById('tool').scrollIntoView({behavior:'smooth', block:'start'});
     geocode(q).then(function(g){
