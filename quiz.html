@@ -403,16 +403,6 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px;margin-top:24px}
                crNote(640)].filter(Boolean)});
       }
     }
-    // Kansas First-Time Homebuyer
-    if(ks && ft && a.ksArea !== 'JOCO' && a.ksArea !== 'KCK' && price <= 2){
-      var kIncOk = inc === 1, kIncMaybe = inc === 2 && hh >= 4;
-      if(kIncOk || kIncMaybe){
-        add({name:'Kansas First-Time Homebuyer', amt:'15–20% of the price as a 0% second loan', strong: kIncOk,
-          why:['No monthly payment, forgiven after 10 years', 'You’d need at least 1% of the price from your own funds',
-               kIncOk ? 'Your income looks to be within the limit' : 'Close on income, depends on your exact household income',
-               a.state === 'BOTH' ? 'Not available in Johnson County or inside KCK city limits' : ''].filter(Boolean)});
-      }
-    }
     // VA
     if(vet){ add({name:'VA loan', amt:'$0 down', strong:true, why:['No monthly mortgage insurance','Can be used more than once','Pairs with MHDC First Place on the Missouri side']}); }
     // USDA

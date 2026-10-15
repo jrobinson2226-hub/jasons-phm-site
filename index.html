@@ -106,7 +106,6 @@
       "Renovation loans",
       "Down payment assistance",
       "MHDC First Place",
-      "Kansas First-Time Homebuyer program",
       "Chase Community Lending",
       "HomeReady and Home Possible",
       "Assumable loans",
@@ -614,17 +613,6 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
           <li>Income and price limits apply by county. PHM is a preferred MHDC lender.</li>
         </ul>
       </article>
-      <article class="card" data-k="ftb dpa ks">
-        <div class="tags"><span class="tag">KS</span><span class="tag">Down payment help</span></div>
-        <h3>Kansas First-Time Homebuyer</h3>
-        <div class="big">15–20% of price</div>
-        <ul>
-          <li>0% second mortgage, no monthly payment, forgiven after 10 years.</li>
-          <li>Household income at or below 80% of the area median.</li>
-          <li>Buyer puts in at least 1% of the price from their own funds.</li>
-          <li>Not available in Johnson County or inside Kansas City, KS city limits.</li>
-        </ul>
-      </article>
       <article class="card" data-k="ftb dpa zero mo ks">
         <div class="tags"><span class="tag">MO</span><span class="tag">KS</span><span class="tag">FHA</span><span class="tag">Down payment help</span></div>
         <h3>FHA Zero Down: Forgivable</h3>
@@ -738,7 +726,7 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
 
 <footer>
   <div class="wrap">
-    <p class="disclaim">This tool is a guide only. Address matching and map boundaries come from third-party services (Esri, USDA Rural Development, U.S. Census Bureau, MHDC) and are not guaranteed. Program eligibility, income limits and purchase price limits change and are confirmed during underwriting. Geographic eligibility is not a credit decision or a commitment to lend. Income and price limits: USDA Section 502 Guaranteed FY2026 limits (USDA Rural Development income eligibility tool); HomeReady/Home Possible at 80% of the 2026 FFIEC median family income for the Kansas City MSA ($113,200); MHDC First Place 2026 limits (effective 5/1/2026 and 5/6/2026); Kansas First-Time Homebuyer at HUD 80% limits for the Kansas City area. 2026 loan limits: $832,750 conforming (FHFA) and $541,287 FHA (HUD) for one-unit homes in Kansas City area counties. USDA uses adjusted income, so actual eligibility can differ. Chase Community Lending neighborhoods reflect Chase's census tract tiers as of October 2026. Tiers are subject to change, and final eligibility is determined by Chase. Income you enter stays in your browser and is not sent or saved.</p>
+    <p class="disclaim">This tool is a guide only. Address matching and map boundaries come from third-party services (Esri, USDA Rural Development, U.S. Census Bureau, MHDC) and are not guaranteed. Program eligibility, income limits and purchase price limits change and are confirmed during underwriting. Geographic eligibility is not a credit decision or a commitment to lend. Income and price limits: USDA Section 502 Guaranteed FY2026 limits (USDA Rural Development income eligibility tool); HomeReady/Home Possible at 80% of the 2026 FFIEC median family income for the Kansas City MSA ($113,200); MHDC First Place 2026 limits (effective 5/1/2026 and 5/6/2026); 2026 loan limits: $832,750 conforming (FHFA) and $541,287 FHA (HUD) for one-unit homes in Kansas City area counties. USDA uses adjusted income, so actual eligibility can differ. Chase Community Lending neighborhoods reflect Chase's census tract tiers as of October 2026. Tiers are subject to change, and final eligibility is determined by Chase. Income you enter stays in your browser and is not sent or saved.</p>
     <p class="credits">Kansas City photos via Unsplash: CK Hicks and Far Chinberdiev. Arrowhead Stadium aerial by <a href="https://commons.wikimedia.org/wiki/File:Aerial_view_of_Arrowhead_Stadium_08-31-2013_crop.jpg">Ichabod</a>, <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>, via Wikimedia Commons.</p>
     <div class="comp">
       <img class="logo-light" src="img/ehl.png" alt="Equal Housing Lender">
@@ -886,8 +874,6 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
   // MHDC First Place 2026 (HUD FY2026, eff. 5/1/2026): [1-2 people, 3+ people]
   var MHDC_INC = {def:{non:[113400,130410], tgt:[136080,158760]}, '29013':{non:[97100,111665], tgt:[116520,135940]}};
   var MHDC_PRICE = {non:566354, tgt:692211};
-  // Kansas First-Time Homebuyer: HUD 80% (HOME) limits, Kansas City HMFA, households of 1-8
-  var KS80 = [62400,71300,80200,89100,96250,103400,110500,117650];
   // 2026 loan limits, one-unit, all KC-area counties: conforming (FHFA) and FHA (HUD floor)
   var CONF_LIMIT = 832750, FHA_LIMIT = 541287;
   var FHA_MAX_PRICE = Math.floor(FHA_LIMIT/0.965/1000)*1000; // base loan at 3.5% down
@@ -966,17 +952,6 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
           if(inc<=l3) yes.push(item('yes','MHDC First Place','4% down payment help for first-time buyers and veterans, forgiven after 10 years. Your income is under the '+money(l3)+' limit. Price limit '+money(price)+'.'));
           else no.push(item('no','MHDC First Place','The income limit for '+hhTxt+' in this county is '+money(l3)+'.'));
         } else info.push(item('info','MHDC First Place','4% down payment help for first-time buyers and veterans, forgiven after 10 years. '+limTxt));
-      }
-    } else {
-      var isJoCo = d.county.indexOf('Johnson')===0;
-      var isKCK = d.county.indexOf('Wyandotte')===0 && /kansas city/i.test(d.city||'');
-      if(isJoCo || isKCK) no.push(item('no','Kansas First-Time Homebuyer', isJoCo ? 'Not offered in Johnson County.' : 'Not offered inside Kansas City, KS city limits.'));
-      else {
-        var kl = sz ? KS80[Math.min(sz,8)-1] : null;
-        if(inc && kl){
-          if(inc<=kl) yes.push(item('yes','Kansas First-Time Homebuyer','Up to 15–20% of the price as a 0% loan, forgiven after 10 years. Your income is under the '+money(kl)+' limit for '+hhTxt+'.'));
-          else no.push(item('no','Kansas First-Time Homebuyer','The income limit for '+hhTxt+' is '+money(kl)+'.'));
-        } else info.push(item('info','Kansas First-Time Homebuyer','Up to 15–20% of the price as a 0% loan, forgiven after 10 years. Income limit '+money(KS80[3])+' for a household of 4 ('+money(KS80[0])+' for 1, '+money(KS80[7])+' for 8).'));
       }
     }
 
