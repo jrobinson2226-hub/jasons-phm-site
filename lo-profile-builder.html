@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-G0K1D53EVK"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-G0K1D53EVK');
+  document.addEventListener('click', function(e){
+    var a = e.target.closest && e.target.closest('a[href]'); if(!a) return;
+    var h = a.getAttribute('href') || '', ev = null;
+    if(h.indexOf('my.phmloans.com') > -1) ev = 'apply_click';
+    else if(h.indexOf('tel:') === 0) ev = 'phone_click';
+    else if(h.indexOf('mailto:') === 0) ev = 'email_click';
+    else if(h.indexOf('claude.ai') > -1) ev = 'builder_claude_click';
+    else if(h.indexOf('chatgpt.com') > -1) ev = 'builder_chatgpt_click';
+    if(ev) try{ gtag('event', ev, {link_text:(a.textContent||'').trim().slice(0,60), page_path:location.pathname}); }catch(err){}
+  }, true);
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loan Officer Profile Builder | Jason Robinson, PHM</title>
+<meta name="description" content="A free tool for mortgage loan officers. Answer a few questions and get AI-search-optimized profile copy for your bio page, Google Business Profile and LinkedIn, written to mortgage advertising compliance rules.">
+<link rel="canonical" href="https://jasonhomeloan.com/lo-profile-builder.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Jason Robinson, Prosperity Home Mortgage">
+<meta property="og:url" content="https://jasonhomeloan.com/lo-profile-builder.html">
+<meta property="og:title" content="Loan Officer Profile Builder | Jason Robinson, PHM">
+<meta property="og:description" content="A free tool for mortgage loan officers. Answer a few questions and get AI-search-optimized profile copy for your bio page, Google Business Profile and LinkedIn.">
+<meta property="og:image" content="https://jasonhomeloan.com/img/headshot.jpg">
+<meta name="twitter:card" content="summary">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Sarabun:wght@800&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --navy:#00426a; --cyan:#00aed9; --blue:#2694cf;
+  --surface:#ffffff; --surface-alt:#eef4f8; --ink:#1c252c; --ink-muted:#56636d;
+  --heading:#00426a; --line:#cfdbe4; --field:#ffffff; --soft:#e6f1f8;
+  --warn:#8a5a00; --warn-bg:#fbf1dc; --bad:#a3322a;
+  --display:"Bebas Neue","Oswald","Arial Narrow",sans-serif;
+  --body:"Source Sans 3","Source Sans Pro",Arial,sans-serif;
+  --name:"Sarabun","Source Sans 3",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --surface:#0d1a24; --surface-alt:#15293a; --ink:#eef3f7; --ink-muted:#a7b5c0;
+  --heading:#8fd0f0; --line:#284256; --field:#0f2030; --soft:#132c40;
+  --warn:#e6b35c; --warn-bg:#30281a; --bad:#f0b48f; color-scheme:dark}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--surface);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+a{color:var(--blue)}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:20px}
+.narrow{max-width:860px;margin:0 auto;padding-inline:20px}
+h1,h2,h3{font-family:var(--display);font-weight:400;color:var(--heading);letter-spacing:.5px;margin:0;text-wrap:balance}
+h1{font-size:clamp(34px,6vw,52px);line-height:1.02}
+h2{font-size:26px}
+h3{font-size:19px}
+p{margin:0}
+
+/* masthead */
+.mast{background:var(--navy);color:#fff}
+.mast .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-block:12px;flex-wrap:wrap}
+.mast img{height:34px;display:block}
+.mast-right{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.who{font-size:13px;line-height:1.35;color:#cfe4f1}
+.who b{display:block;font-family:var(--name);font-size:15px;color:#fff;letter-spacing:.2px}
+.who a{color:#cfe4f1}
+.apply{background:var(--cyan);color:#00283f;font-weight:700;text-decoration:none;border-radius:4px;padding:9px 16px;font-size:14px;white-space:nowrap}
+
+/* intro */
+.intro{background:var(--surface-alt);padding-block:34px 30px;border-bottom:1px solid var(--line)}
+.kick{font-family:var(--mono);font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--blue);margin-bottom:8px}
+.lead{font-size:18px;color:var(--ink-muted);max-width:66ch;margin-top:10px}
+
+main{padding-block:28px 10px}
+.grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:22px;align-items:start}
+@media (max-width:920px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:22px;display:flex;flex-direction:column;gap:20px;min-width:0}
+fieldset{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
+legend{font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-muted);padding:0;margin-bottom:10px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:520px){.row{grid-template-columns:1fr}}
+label{display:flex;flex-direction:column;gap:5px;font-weight:600;font-size:14px;min-width:0}
+label .hint{font-weight:400;color:var(--ink-muted);font-size:13px}
+.req{color:var(--blue)}
+input[type=text],input[type=email],input[type=tel],textarea{font:inherit;font-size:15px;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:5px;padding:9px 11px;width:100%}
+textarea{min-height:74px;resize:vertical}
+input:focus,textarea:focus,button:focus-visible,a:focus-visible,.chip input:focus-visible+span{outline:2px solid var(--blue);outline-offset:1px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;font-weight:500}
+.chip input{position:absolute;opacity:0;pointer-events:none}
+.chip span{border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:14px;cursor:pointer;background:var(--field);user-select:none}
+.chip input:checked+span{background:var(--soft);border-color:var(--blue);color:var(--ink)}
+.chip input:checked+span::before{content:"\2713 ";color:var(--blue)}
+.group-label{font-weight:600;font-size:14px;display:flex;flex-direction:column;gap:2px}
+.actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+button{font:inherit;font-weight:600;font-size:15px;border-radius:5px;padding:10px 16px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+button.primary{background:var(--navy);border-color:var(--navy);color:#fff}
+button.small{font-size:13px;padding:6px 10px}
+.note{font-size:13px;color:var(--ink-muted);margin:0}
+.msg{font-size:14px;border-radius:5px;padding:10px 12px;background:var(--warn-bg);color:var(--ink);border-left:3px solid var(--warn)}
+.msg.err{border-left-color:var(--bad)}
+.out-head{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center}
+.badge{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:3px;background:var(--soft);color:var(--blue)}
+.badge.example{background:var(--warn-bg);color:var(--warn)}
+.asset{border-top:1px solid var(--line);padding-top:16px;display:flex;flex-direction:column;gap:10px}
+.asset:first-of-type{border-top:0;padding-top:0}
+.asset-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.asset h3{font-family:var(--name);font-size:16px;font-weight:800;letter-spacing:0}
+.meta{font-family:var(--mono);font-size:12px;color:var(--ink-muted);font-variant-numeric:tabular-nums}
+.text{white-space:pre-wrap;overflow-wrap:anywhere;margin:0;max-width:68ch}
+.meter{position:relative;height:8px;background:var(--surface-alt);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.meter .fill{position:absolute;inset:0 auto 0 0;background:var(--blue)}
+.meter .cut{position:absolute;top:-1px;bottom:-1px;width:2px;background:var(--warn)}
+.meter-legend{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--ink-muted)}
+ul.targets{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.faq{display:flex;flex-direction:column;gap:12px;margin:0}
+.faq .q{font-weight:700;margin:0}
+.faq .a{margin:4px 0 0;white-space:pre-wrap;max-width:68ch}
+.promptbox{font-family:var(--mono);font-size:12px;max-height:260px;overflow:auto;white-space:pre-wrap;background:var(--surface-alt);border:1px solid var(--line);border-radius:5px;padding:10px}
+.pick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:440px){.pick{grid-template-columns:1fr}}
+.pick-btn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;text-decoration:none;font:inherit;border-radius:6px;padding:14px 16px;cursor:pointer;border:1px solid var(--navy);background:var(--navy);color:#fff}
+.pick-btn strong{font-family:var(--name);font-size:17px;font-weight:800}
+.pick-btn span{font-size:13px;font-weight:500;opacity:.92}
+#open-gpt{background:var(--surface);color:var(--ink);border-color:var(--ink)}
+.pick-btn:hover{filter:brightness(1.08)}
+.linkish{background:none;border:0;padding:0;font:inherit;font-size:inherit;color:var(--blue);text-decoration:underline;cursor:pointer}
+.callout{background:var(--soft);border-radius:6px;padding:14px 16px;font-size:14px}
+.callout strong{color:var(--heading)}
+
+/* guide */
+.guide{margin-top:26px}
+.guide-head{display:flex;flex-direction:column;gap:6px;max-width:74ch}
+.guide-head p{color:var(--ink-muted)}
+.steps{margin:16px 0 0;padding:0;list-style:none;counter-reset:step;display:grid;grid-template-columns:repeat(auto-fit,minmax(265px,1fr));gap:12px}
+.steps li{counter-increment:step;display:flex;flex-direction:column;gap:4px;padding:14px 16px 14px 48px;position:relative;border:1px solid var(--line);border-radius:6px;background:var(--surface-alt);min-width:0;font-size:14px}
+.steps li::before{content:counter(step);position:absolute;left:14px;top:14px;width:23px;height:23px;border-radius:50%;background:var(--navy);color:#fff;font-family:var(--mono);font-size:12px;display:grid;place-items:center}
+.steps strong{font-family:var(--name);font-size:15px;font-weight:800;color:var(--heading)}
+.steps .uses{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--blue);margin-top:2px}
+.goes{font-size:13px;color:var(--ink-muted);margin:0}
+
+/* built by */
+.lo{margin-top:26px;background:var(--surface-alt);border:1px solid var(--line);border-radius:8px;padding:20px 22px;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:14px 28px}
+@media (max-width:700px){.lo{grid-template-columns:minmax(0,1fr)}}
+.lo-main,.lo-contact{display:flex;flex-direction:column;gap:4px;min-width:0}
+.lo-contact{align-items:flex-start;justify-content:center;gap:6px}
+.lo-name{font-family:var(--name);font-size:20px;font-weight:800;color:var(--heading)}
+.lo-pitch{color:var(--ink-muted);font-size:15px;max-width:58ch;margin-top:4px}
+.lo-line{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.sel{user-select:all;font-weight:600;overflow-wrap:anywhere}
+.lo-legal{grid-column:1/-1;margin:0;font-size:12px;color:var(--ink-muted);border-top:1px solid var(--line);padding-top:12px}
+
+footer{background:var(--surface-alt);border-top:1px solid var(--line);margin-top:34px;padding-block:22px}
+.disclaim{font-size:12px;color:var(--ink-muted);margin-bottom:14px}
+.comp{display:flex;gap:14px;align-items:flex-start}
+.comp img{width:46px;height:auto;flex:none}
+.comp p{font-size:11px;color:var(--ink-muted);line-height:1.45}
+.logo-dark{display:none}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo-light{display:none}:root:not([data-theme="light"]) .logo-dark{display:block}}
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <div class="wrap">
+    <a href="./"><img src="img/phm-logo-reversed.png" alt="Prosperity Home Mortgage"></a>
+    <div class="mast-right">
+      <div class="who"><b>Jason Robinson</b>Sr. Loan Officer · NMLS# 1008330 · <a href="tel:+19136877247">(913) 687-7247</a></div>
+      <a class="apply" href="https://my.phmloans.com/register?companyGuid=1f65684a-c230-4514-a95f-1c7195b50055&amp;userGuid=f8c00be5-da7f-448c-89cb-e53c61c159dd&amp;flowGuid=68b8db59-a419-4f75-9207-f2cb951e0f14&amp;branchGuid=1da1851d-0431-47b5-b3bf-2d48549547ab" target="_blank" rel="noopener">Apply now</a>
+    </div>
+  </div>
+</header>
+
+<div class="intro">
+  <div class="narrow">
+    <p class="kick">Free tool · For mortgage loan officers</p>
+    <h1>Loan Officer Profile Builder</h1>
+    <p class="lead">Answer a few questions about your lending business. You'll get five ready-to-paste pieces, written so ChatGPT, Gemini, Perplexity and Claude can find you and name you when borrowers ask who to call about a loan. Built to mortgage advertising rules: no rates, no payments, no approval promises.</p>
+  </div>
+</div>
+
+<main>
+  <div class="wrap">
+    <div class="grid">
+      <form class="panel" id="form" novalidate>
+        <h2>About you</h2>
+
+        <fieldset>
+          <legend>Identity &amp; NMLS</legend>
+          <div class="row">
+            <label for="name">Full name <span class="req">*</span><input id="name" type="text" autocomplete="name" placeholder="Jane Smith" required></label>
+            <label for="title">Title<input id="title" type="text" placeholder="Sr. Loan Officer"></label>
+          </div>
+          <div class="row">
+            <label for="company">Company <span class="req">*</span><span class="hint">Exact legal name</span><input id="company" type="text" placeholder="Example Home Mortgage, LLC" required></label>
+            <label for="nmls">Your NMLS ID <span class="req">*</span><input id="nmls" type="text" inputmode="numeric" placeholder="1008330" required></label>
+          </div>
+          <label for="conmls">Company NMLS ID<span class="hint">Goes in your disclosure line. Look it up at nmlsconsumeraccess.org if you're not sure.</span><input id="conmls" type="text" inputmode="numeric" placeholder="75164"></label>
+          <div class="row">
+            <label for="phone">Phone<input id="phone" type="tel" autocomplete="tel" placeholder="(913) 555-0100"></label>
+            <label for="email">Email<input id="email" type="email" autocomplete="email" placeholder="you@lender.com"></label>
+          </div>
+          <div class="row">
+            <label for="site">Application website<span class="hint">Where borrowers apply</span><input id="site" type="text" placeholder="yourname.lender.com"></label>
+            <label for="office">Branch office address<input id="office" type="text" placeholder="123 Main St, Overland Park, KS 66210"></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Where you're licensed</legend>
+          <div class="group-label">License states <span class="req">*</span><span class="hint" style="font-weight:400;color:var(--ink-muted);font-size:13px">Only states where you personally hold an active license</span></div>
+          <div class="chips" id="states">
+            <label class="chip"><input type="checkbox" value="Kansas"><span>Kansas</span></label>
+            <label class="chip"><input type="checkbox" value="Missouri"><span>Missouri</span></label>
+            <label class="chip"><input type="checkbox" value="Nebraska"><span>Nebraska</span></label>
+            <label class="chip"><input type="checkbox" value="Oklahoma"><span>Oklahoma</span></label>
+            <label class="chip"><input type="checkbox" value="Arkansas"><span>Arkansas</span></label>
+            <label class="chip"><input type="checkbox" value="Iowa"><span>Iowa</span></label>
+            <label class="chip"><input type="checkbox" value="Colorado"><span>Colorado</span></label>
+            <label class="chip"><input type="checkbox" value="Texas"><span>Texas</span></label>
+            <label class="chip"><input type="checkbox" value="Florida"><span>Florida</span></label>
+            <label class="chip"><input type="checkbox" value="Arizona"><span>Arizona</span></label>
+          </div>
+          <label for="states-other">Other license states<span class="hint">Separate with commas</span><input id="states-other" type="text" placeholder="e.g. Tennessee, Georgia"></label>
+          <label for="metro">Primary metro or region <span class="req">*</span><span class="hint">Where most of your business actually comes from</span><input id="metro" type="text" placeholder="Kansas City metro, including Johnson County and the Northland"></label>
+          <label for="cities">Cities and counties you lend in most<span class="hint">Separate with commas. These drive local AI answers.</span><textarea id="cities" placeholder="Overland Park, Olathe, Lenexa, Leawood, Kansas City MO, Lee's Summit, Johnson County, Jackson County"></textarea></label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Loan programs you offer</legend>
+          <div class="group-label">Programs <span class="hint" style="font-weight:400;color:var(--ink-muted);font-size:13px">This is what borrowers actually search for. Pick all you actively originate.</span></div>
+          <div class="chips" id="programs">
+            <label class="chip"><input type="checkbox" value="Conventional"><span>Conventional</span></label>
+            <label class="chip"><input type="checkbox" value="FHA"><span>FHA</span></label>
+            <label class="chip"><input type="checkbox" value="VA"><span>VA</span></label>
+            <label class="chip"><input type="checkbox" value="USDA Rural Development"><span>USDA</span></label>
+            <label class="chip"><input type="checkbox" value="Jumbo"><span>Jumbo</span></label>
+            <label class="chip"><input type="checkbox" value="Down payment assistance programs"><span>Down payment assistance</span></label>
+            <label class="chip"><input type="checkbox" value="First-time homebuyer programs"><span>First-time buyer programs</span></label>
+            <label class="chip"><input type="checkbox" value="Renovation loans"><span>Renovation / 203(k)</span></label>
+            <label class="chip"><input type="checkbox" value="Construction-to-permanent"><span>Construction-to-perm</span></label>
+            <label class="chip"><input type="checkbox" value="Bank statement and non-QM"><span>Bank statement / non-QM</span></label>
+            <label class="chip"><input type="checkbox" value="Investment property and DSCR"><span>Investment / DSCR</span></label>
+            <label class="chip"><input type="checkbox" value="Physician and professional loans"><span>Physician loans</span></label>
+            <label class="chip"><input type="checkbox" value="Refinance"><span>Refinance</span></label>
+            <label class="chip"><input type="checkbox" value="Reverse mortgage (HECM)"><span>Reverse / HECM</span></label>
+          </div>
+          <label for="prog-other">Other programs<input id="prog-other" type="text" placeholder="e.g. manufactured housing, condo, bridge"></label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Who you work with</legend>
+          <div class="group-label">Borrowers you serve</div>
+          <div class="chips" id="borrowers">
+            <label class="chip"><input type="checkbox" value="First-time homebuyers"><span>First-time buyers</span></label>
+            <label class="chip"><input type="checkbox" value="Move-up buyers"><span>Move-up buyers</span></label>
+            <label class="chip"><input type="checkbox" value="Self-employed and business owners"><span>Self-employed</span></label>
+            <label class="chip"><input type="checkbox" value="Veterans and active-duty military"><span>Veterans / military</span></label>
+            <label class="chip"><input type="checkbox" value="Relocating buyers"><span>Relocation</span></label>
+            <label class="chip"><input type="checkbox" value="Real estate investors"><span>Investors</span></label>
+            <label class="chip"><input type="checkbox" value="New construction buyers"><span>New construction</span></label>
+            <label class="chip"><input type="checkbox" value="Physicians and medical professionals"><span>Physicians</span></label>
+            <label class="chip"><input type="checkbox" value="Buyers working with a financial advisor"><span>Wealth management</span></label>
+            <label class="chip"><input type="checkbox" value="Homeowners refinancing"><span>Refinancing owners</span></label>
+          </div>
+          <label for="langs">Languages you work in<span class="hint">Beyond English. AI assistants get asked this a lot.</span><input id="langs" type="text" placeholder="e.g. Spanish, Vietnamese"></label>
+          <label for="creds">Credentials &amp; proof points <span class="hint">Only facts you can back up: years originating, loans closed, awards with the year, designations</span><textarea id="creds" placeholder="Originating since 2011; 11-time President's Circle; Scotsman Guide Top Originator 8 years"></textarea></label>
+          <label for="diff">What you actually do differently<span class="hint">One or two plain sentences. Skip this and the copy stays generic.</span><textarea id="diff" placeholder="I take applications evenings and weekends, and I call the listing agent myself on every offer my buyer writes."></textarea></label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Voice</legend>
+          <div class="chips" id="tone">
+            <label class="chip"><input type="checkbox" value="Friendly and approachable" checked><span>Friendly</span></label>
+            <label class="chip"><input type="checkbox" value="Plain-spoken" checked><span>Plain-spoken</span></label>
+            <label class="chip"><input type="checkbox" value="Authoritative" checked><span>Authoritative</span></label>
+            <label class="chip"><input type="checkbox" value="Polished"><span>Polished</span></label>
+            <label class="chip"><input type="checkbox" value="Down-to-earth"><span>Down-to-earth</span></label>
+            <label class="chip"><input type="checkbox" value="Data-focused"><span>Data-focused</span></label>
+          </div>
+        </fieldset>
+
+        <div id="form-msg" class="msg err" hidden></div>
+        <div class="group-label">Build it with</div>
+        <div class="pick">
+          <a class="pick-btn" id="open-claude" href="https://claude.ai/new" target="_blank" rel="noopener">
+            <strong>Claude</strong>
+            <span>Opens with your answers filled in</span>
+          </a>
+          <a class="pick-btn" id="open-gpt" href="https://chatgpt.com/" target="_blank" rel="noopener">
+            <strong>ChatGPT</strong>
+            <span>Opens with your answers filled in</span>
+          </a>
+        </div>
+        <p class="note">Free accounts work fine for both. Using something else, like Gemini or Copilot? <button type="button" class="linkish" id="copy-prompt">Copy the prompt</button> and paste it in.</p>
+        <p class="note"><button type="button" class="linkish" id="clear-form">Clear the form</button> to start over.</p>
+      </form>
+
+      <section class="panel" id="out" aria-live="polite">
+        <div class="out-head">
+          <h2 id="out-title">What you'll get</h2>
+          <span class="badge example" id="out-badge">Example output</span>
+        </div>
+        <div id="out-body"></div>
+      </section>
+    </div>
+
+    <section class="panel guide">
+      <div class="guide-head">
+        <p class="kick">Next step</p>
+        <h2>Where to put your profile so AI finds you</h2>
+        <p>You can't submit anything to ChatGPT or Claude directly. They learn about loan officers by reading the public web, and for our industry that means Google, Bing, your company's site, the review platforms and NMLS Consumer Access. The job is to post these pieces where they read, with your name, company and NMLS ID identical everywhere.</p>
+      </div>
+      <div class="callout"><strong>Run this past compliance first.</strong> Most lenders require marketing review before anything goes public, and several of these destinations count as advertising. Send your compliance team the whole output, not just the bio.</div>
+      <ol class="steps">
+        <li><strong>Check NMLS Consumer Access</strong><span>Go to nmlsconsumeraccess.org and look yourself up. Your name, employer and license states there are the record AI tools and borrowers check against. Make everything else match it exactly.</span><span class="uses">Anchor for everything</span></li>
+        <li><strong>Your company bio page</strong><span>Send pieces 1, 2 and 4 to whoever maintains your profile page. The FAQ block is the piece most lender sites are missing.</span><span class="uses">Uses pieces 1, 2 and 4</span></li>
+        <li><strong>Google Business Profile</strong><span>If your company allows individual profiles, go to google.com/business and paste piece 3 into the Description field. List your license states as service areas.</span><span class="uses">Uses piece 3</span></li>
+        <li><strong>Bing Places</strong><span>ChatGPT's web search leans heavily on Bing. Go to bingplaces.com and import from Google, or create one and paste piece 3.</span><span class="uses">Uses piece 3</span></li>
+        <li><strong>Zillow lender profile</strong><span>Claim your profile in the Zillow lender directory and paste piece 2 into your About section. Zillow pages get crawled constantly.</span><span class="uses">Uses piece 2</span></li>
+        <li><strong>Review platforms</strong><span>Experience.com, Google reviews, Zillow reviews. Paste piece 2 where there's a bio field, and ask happy borrowers to name the loan type and city in their review ("VA loan in Olathe").</span><span class="uses">Uses piece 2</span></li>
+        <li><strong>LinkedIn</strong><span>Paste piece 2 into your About section. Use the first sentence of piece 1 as your headline, with your NMLS ID in it.</span><span class="uses">Uses pieces 1 and 2</span></li>
+        <li><strong>Your application site and social</strong><span>Piece 1 as the intro on your application page and Facebook business page. Piece 4 makes good standalone social posts, one question at a time.</span><span class="uses">Uses pieces 1 and 4</span></li>
+        <li><strong>Check your work in a few weeks</strong><span>It takes weeks or months for AI tools to pick up changes. After 4 to 8 weeks, ask the five questions from piece 5 in ChatGPT and Claude with web search on, in a clean incognito window, and see whether you come up.</span><span class="uses">Uses piece 5</span></li>
+      </ol>
+      <p class="note" style="margin-top:14px">Tip: the single biggest difference between loan officers who get named and those who don't is published, specific, program-level content. One honest page about down payment assistance in your state beats ten posts about rates.</p>
+    </section>
+
+    <aside class="lo">
+      <div class="lo-main">
+        <p class="kick">Built by</p>
+        <strong class="lo-name">Jason Robinson</strong>
+        <span>Sr. Loan Officer · Prosperity Home Mortgage, LLC</span>
+        <span class="lo-pitch">I build free tools like this one for the agents and loan officers I work with in Kansas City. Questions about the tool, or want one built for your own team? Reach out.</span>
+      </div>
+      <div class="lo-contact">
+        <span class="lo-line"><span class="meta">Phone</span> <span class="sel">(913) 687-7247</span></span>
+        <span class="lo-line"><span class="meta">Email</span> <span class="sel">jason.robinson@phmloans.com</span></span>
+        <button type="button" class="small" id="copy-contact">Copy contact info</button>
+      </div>
+      <p class="lo-legal">Jason Robinson, NMLS #1008330. Prosperity Home Mortgage, LLC, NMLS #75164. This tool is a free marketing resource, is not an offer to lend or a commitment to lend, and is not legal or compliance advice. Every result is written to avoid rates, payments, fees, approval promises and fair lending problems. Even so: read it over, confirm every fact, verify your NMLS details, and get it approved by your own company's compliance team before you publish any of it.</p>
+    </aside>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p class="disclaim">This page is a free marketing resource for mortgage professionals. It does not generate, review or approve advertising on behalf of any company, and it is not legal or compliance advice. You are responsible for the content you publish and for meeting your own company's, your state's and federal advertising requirements.</p>
+    <div class="comp">
+      <img class="logo-light" src="img/ehl.png" alt="Equal Housing Lender">
+      <img class="logo-dark" src="img/ehl-white.png" alt="Equal Housing Lender">
+      <p>©2026 Prosperity Home Mortgage, LLC. (877) 275-1762. 3060 Williams Drive, Suite 600, Fairfax, VA 22031. All first mortgage products are provided by Prosperity Home Mortgage, LLC. Not all mortgage products may be available in all areas. Not all borrowers will qualify. NMLS ID #75164 (For licensing information go to: NMLS Consumer Access at http://www.nmlsconsumeraccess.org/) Arizona Mortgage Bankers License 1001252. Licensed by the Department of Financial Protection and Innovation under the California Residential Mortgage Lending Act. Licensed by the Delaware State Bank Commissioner. Georgia Residential Mortgage Licensee. Massachusetts Mortgage Lender and Mortgage Broker MC75164. Licensed by the NJ Department of Banking and Insurance. Licensed Mortgage Banker-NYS Department of Financial Services. Rhode Island Licensed Lender. Rhode Island Licensed Loan Broker. Rhode Island Licensed Third-Party Loan Servicer. Also licensed in AK, AL, AR, CO, CT, DC, FL, ID, IL, IN, KS, KY, LA, MD, ME, MI, MN, MO, MS, MT, NC, ND, NE, NH, NM, NV, OH, OK, OR, PA, SC, SD, TN, TX, UT, VA, VT, WA, WI, WV and WY.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+
+  function checkedVals(id){ return Array.prototype.slice.call($(id).querySelectorAll("input:checked")).map(function(i){return i.value;}); }
+
+  function collect(){
+    var v = function(f){ return $(f).value.trim(); };
+    var states = checkedVals("states");
+    if(v("states-other")) v("states-other").split(",").map(function(s){return s.trim();}).filter(Boolean).forEach(function(s){ states.push(s); });
+    var programs = checkedVals("programs");
+    if(v("prog-other")) programs.push(v("prog-other"));
+    return {
+      name:v("name"), title:v("title"), company:v("company"), nmls:v("nmls"), conmls:v("conmls"),
+      phone:v("phone"), email:v("email"), site:v("site"), office:v("office"),
+      states:states, metro:v("metro"), cities:v("cities"),
+      programs:programs, borrowers:checkedVals("borrowers"), langs:v("langs"),
+      creds:v("creds"), diff:v("diff"), tone:checkedVals("tone")
+    };
+  }
+  function validate(d){
+    var miss = [];
+    if(!d.name) miss.push("your full name");
+    if(!d.company) miss.push("your company");
+    if(!d.nmls) miss.push("your NMLS ID");
+    if(!d.states.length) miss.push("at least one license state");
+    if(!d.metro) miss.push("your primary metro");
+    return miss;
+  }
+  function showFormMsg(t){ var m=$("form-msg"); m.textContent=t; m.hidden=!t; }
+
+  function inputsBlock(d){
+    var or = function(x, fb){ return x ? x : fb; };
+    return [
+      "LOAN OFFICER INPUTS",
+      "- Full name: " + d.name,
+      "- Title: " + or(d.title, "Loan Officer"),
+      "- Company (use exactly as written): " + d.company,
+      "- Individual NMLS ID: " + d.nmls,
+      "- Company NMLS ID: " + or(d.conmls, "(not provided - use [company NMLS] placeholder)"),
+      "- Phone: " + or(d.phone, "(not provided - use [phone] placeholder)"),
+      "- Email: " + or(d.email, "(not provided - use [email] placeholder)"),
+      "- Application website: " + or(d.site, "(not provided - omit)"),
+      "- Branch office address: " + or(d.office, "(not provided - use [office address] placeholder)"),
+      "- Licensed in: " + d.states.join(", "),
+      "- Primary metro / region: " + d.metro,
+      "- Cities and counties: " + or(d.cities, "(none provided - use the metro only, do not invent cities)"),
+      "- Loan programs actively offered: " + or(d.programs.join(", "), "(none provided - keep programs general)"),
+      "- Borrower types served: " + or(d.borrowers.join(", "), "(none provided)"),
+      "- Languages beyond English: " + or(d.langs, "(none provided - do not mention languages)"),
+      "- Credentials / proof points: " + or(d.creds, "(none provided - do not invent any)"),
+      "- What they do differently: " + or(d.diff, "(none provided - do not invent a differentiator)"),
+      "- Brand tone: " + or(d.tone.join(", "), "Friendly, plain-spoken, professional")
+    ].join("\n");
+  }
+
+  var RULES = 'You are an expert in Generative Engine Optimization (GEO), Answer Engine Optimization (AEO) and mortgage marketing compliance. Write copy that helps AI search engines (ChatGPT, Gemini, Perplexity, Claude) recognize this loan officer as a credible licensed entity and cite them for searches like "Who does VA loans in Kansas City?"\n\n'
+    + 'Mortgage advertising is heavily regulated. Every rule below is hard.\n\n'
+    + 'COMPLIANCE RULES\n'
+    + '1. NMLS: the name and NMLS ID appear in the authority statement, bio and GBP description. Company name and company NMLS ID appear in the GBP disclosure footer.\n'
+    + '2. NO loan-term numbers, ever: no interest rate, APR, payment, down payment percent or amount, closing cost, fee, points, loan amount, term in years, and no comparison like "lower rate" or "save $X". These are Reg Z triggering terms needing disclosures this copy cannot carry. Name programs by name and purpose only.\n'
+    + '3. No promises: never "guaranteed", "guaranteed approval", "you are approved", "pre-approved", "instant approval", "close in X days", "lowest rate", "best rate", "cheapest", "no cost", "free". Say what you help with, not what you promise.\n'
+    + '4. No superlatives or rankings ("best", "top", "#1", "leading", "fastest", "expert") unless a specific verifiable proof point was supplied; then state it plainly with its source and year.\n'
+    + '5. Fair lending (ECOA / Fair Housing): no preference or distinction based on race, color, religion, national origin, sex, marital status, age, disability, familial status or public assistance. Never call a neighborhood "safe", "family-friendly", "up-and-coming" or "exclusive", or judge who lives there. Naming borrower situations actually served (first-time buyers, self-employed, veterans) is fine; describing people by protected class is not.\n'
+    + '6. FHA, VA and USDA may be named as programs. Never imply the officer or company is the government, is endorsed by it, or acts on its behalf.\n'
+    + '7. Name only the license states supplied. Never imply lending is available elsewhere.\n'
+    + '8. Invent nothing: no years, volume, awards, rankings, designations, reviews, languages or cities that were not supplied. If something is missing, write around it and note it.\n'
+    + '9. Put "Equal Housing Lender" in the GBP disclosure footer.\n\n'
+    + 'STYLE: plain, warm, confident language a person would say. Short sentences. No cliches ("nestled", "vibrant", "seamless", "dream home", "navigate", "journey", "elevate", "passion for helping people"). No em dashes. Third person for pieces 1-3.';
+
+  var DELIVERABLES = 'DELIVERABLES\n'
+    + '1. Authority statement: 50-75 words. First sentence answers "Who is [Name]?" and links name + NMLS ID + company + license states + primary metro + the main thing they help with.\n'
+    + '2. Digital bio: 150-250 words for a company bio page, Zillow lender profile and LinkedIn. Name the specific programs, borrower situations and real geography, worked in naturally, no keyword stuffing. End with a low-pressure call to action using the phone, email or website (or placeholders). Blank line between paragraphs. Final line exactly: "[Name] | NMLS #[NMLS] | [Company] | Licensed in [states]".\n'
+    + '3. Google Business Profile description: HARD MAX 750 characters including spaces, aim 620-720. The first 250 characters must hold name, NMLS ID, company, license states and main programs, because Google truncates there. Then borrower types and cities. End with a disclosure footer: name, NMLS ID, company, company NMLS ID, office address, phone (or placeholders), "Equal Housing Lender."\n'
+    + '4. Borrower FAQ: exactly 4 question-and-answer pairs for the bio page. Each question phrased the way a borrower would ask an AI assistant, specific to the real programs, states and borrower types above. Each answer 40-70 words, plain language, obeying every rule above. Answer engines quote this piece most, so make the answers genuinely useful and self-contained.\n'
+    + '5. AI search questions: exactly 5 questions a borrower would type into an AI assistant that this copy answers, using the real programs, cities and borrower types. Different from the FAQ questions.\n'
+    + '6. Before you publish: 2-5 specific things to confirm or add, including any placeholder left in, and a reminder to route this through company compliance.';
+
+  function buildPrompt(d){
+    return RULES + "\n\n" + inputsBlock(d) + "\n\n" + DELIVERABLES + "\n\n"
+      + "OUTPUT FORMAT\n"
+      + "Use five clear headings: Authority Statement, Digital Bio, Google Business Profile Description (show the character count), Borrower FAQ, AI Search Questions. Then a short \"Before you publish\" list.\n"
+      + "Before you answer: count the Google Business Profile characters and keep it at or under 750, and re-read every piece for any rate, payment, fee, cost or guarantee language and remove it.";
+  }
+
+  function el(tag, attrs){
+    var n = document.createElement(tag), k;
+    if(attrs) for(k in attrs){ if(k==="class") n.className=attrs[k]; else if(k==="text") n.textContent=attrs[k]; else n.setAttribute(k, attrs[k]); }
+    Array.prototype.slice.call(arguments,2).forEach(function(kid){
+      (Array.isArray(kid)?kid:[kid]).forEach(function(c){ if(c!=null) n.append(c); });
+    });
+    return n;
+  }
+  function copyText(text, btn){
+    var label = btn.textContent;
+    function done(ok){ btn.textContent = ok ? "Copied" : "Select and copy manually"; setTimeout(function(){ btn.textContent = label; }, 1800); }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){ done(true); }, function(){ fallback(); });
+    } else { fallback(); }
+    function fallback(){
+      var ta = document.createElement("textarea"); ta.value=text; ta.style.position="fixed"; ta.style.opacity="0";
+      document.body.appendChild(ta); ta.select(); var ok=false;
+      try{ ok=document.execCommand("copy"); }catch(e){}
+      document.body.removeChild(ta); done(ok);
+    }
+  }
+  function asset(title, metaText, bodyNode, goes){
+    return el("div",{class:"asset"},
+      el("div",{class:"asset-head"}, el("h3",{text:title}), el("span",{class:"meta",text:metaText})),
+      goes ? el("p",{class:"goes",text:"Goes on: "+goes}) : null,
+      bodyNode);
+  }
+  function gbpMeter(len){
+    var pct = Math.min(100, len/750*100);
+    return [
+      el("div",{class:"meter"}, el("div",{class:"fill", style:"width:"+pct+"%"}), el("div",{class:"cut", style:"left:"+(250/750*100)+"%"})),
+      el("div",{class:"meter-legend"}, el("span",{text:"0"}), el("span",{text:"250 · shown before “More”"}), el("span",{text:"750 max"}))
+    ];
+  }
+
+  var EXAMPLE = {
+    authority_statement:"Sample Officer, NMLS #000000, is a mortgage loan officer with Example Home Mortgage, licensed in Kansas and Missouri and working across the Kansas City metro. She originates conventional, FHA, VA and jumbo loans, along with down payment assistance programs, and works most often with first-time buyers, self-employed borrowers and veterans in Johnson and Jackson counties.",
+    bio:"Sample Officer is a mortgage loan officer with Example Home Mortgage, NMLS #000000, serving buyers across the Kansas City metro on both the Kansas and Missouri sides.\n\nShe originates conventional, FHA, VA and jumbo loans, and works regularly with down payment assistance programs available to buyers in Kansas and Missouri. Much of her business comes from first-time buyers, self-employed borrowers whose income takes extra work to document, and veterans using their VA benefit.\n\nShe takes applications in Overland Park, Olathe, Lenexa, Kansas City and Lee's Summit, and works with buyers purchasing new construction as well as existing homes.\n\nThinking about buying or refinancing? Call or text [phone], or email [email], and she will walk you through what the process looks like for your situation.\n\nSample Officer | NMLS #000000 | Example Home Mortgage | Licensed in Kansas and Missouri",
+    gbp_description:"Sample Officer, NMLS #000000, is a mortgage loan officer with Example Home Mortgage, licensed in Kansas and Missouri. Programs include conventional, FHA, VA, jumbo and down payment assistance. She works with first-time buyers, self-employed borrowers, veterans and new construction buyers across the Kansas City metro, including Overland Park, Olathe, Lenexa, Leawood, Kansas City MO and Lee's Summit, and throughout Johnson and Jackson counties. Sample Officer, NMLS #000000. Example Home Mortgage, NMLS #[company NMLS], [office address], [phone]. Equal Housing Lender.",
+    faq:[
+      {q:"Do you work with first-time buyers in Kansas and Missouri?",a:"Yes. First-time buyers are a large part of the business. That usually starts with a conversation about what documents you will need and what the timeline looks like, before you ever tour a home. Kansas and Missouri both have down payment assistance programs with their own eligibility rules, and she can walk you through which ones you may qualify for."},
+      {q:"I'm self-employed. Can I still get a mortgage?",a:"Yes, though the documentation works differently. Instead of pay stubs, lenders look at tax returns, profit and loss statements and business bank activity, and how they calculate your income is not always how you think of it. It helps to have that reviewed early, before you make an offer, so there are no surprises later."},
+      {q:"What is down payment assistance and who qualifies?",a:"Down payment assistance programs help cover part of the up-front money needed to buy a home. Programs are offered by state and local agencies, and each has its own rules about income, purchase price, location and whether you have owned a home before. Eligibility is specific to your situation, so it is worth checking rather than assuming."},
+      {q:"Do you handle VA loans for veterans in the Kansas City area?",a:"Yes. VA loans are available to eligible veterans, active-duty service members and some surviving spouses, and they work differently from conventional financing in several ways worth understanding before you shop. She can explain how the VA benefit applies to your situation and what the appraisal and eligibility steps involve."}
+    ],
+    citation_targets:["Who does VA loans in Overland Park, Kansas?","I'm self-employed and want to buy in Johnson County. Which loan officer can help?","Is there a lender in Kansas City who works with down payment assistance programs?","Which mortgage loan officer in Lee's Summit works with first-time buyers?","Loan officer licensed in both Kansas and Missouri for a new construction purchase"]
+  };
+
+  function words(s){ return (s.trim().match(/\S+/g)||[]).length; }
+  function renderExample(){
+    var r = EXAMPLE, body = $("out-body"); body.replaceChildren();
+    body.append(
+      asset("1 · Authority statement", words(r.authority_statement)+" words", el("p",{class:"text",text:r.authority_statement}), "top of your company bio page, LinkedIn headline, application page intro"),
+      asset("2 · Digital bio", words(r.bio)+" words", el("p",{class:"text",text:r.bio}), "company bio page, Zillow lender profile, LinkedIn About, review platforms"),
+      asset("3 · Google Business Profile", r.gbp_description.length+" / 750 characters",
+        el("div",{style:"display:flex;flex-direction:column;gap:8px"}, el("p",{class:"text",text:r.gbp_description}), gbpMeter(r.gbp_description.length)),
+        "Google Business Profile description and Bing Places"),
+      asset("4 · Borrower FAQ", r.faq.length+" questions",
+        el("div",{class:"faq"}, r.faq.map(function(p){ return el("div",null, el("p",{class:"q",text:p.q}), el("p",{class:"a",text:p.a})); })),
+        "your bio page or website. This is the piece answer engines quote most."),
+      asset("5 · AI search questions", r.citation_targets.length+" prompts",
+        el("ul",{class:"targets"}, r.citation_targets.map(function(t){ return el("li",{text:t}); })),
+        "nowhere. Ask these in ChatGPT and Claude in a few weeks to see if you come up")
+    );
+  }
+
+  // Some networks and CDNs drop very long URLs, so past this length we open the
+  // assistant plain and let the clipboard copy carry the prompt instead.
+  var URL_MAX = 8000;
+
+  function promptPanel(where, prefilled){
+    var d = collect(), p = buildPrompt(d);
+    var btn = el("button",{type:"button",class:"primary",text:"Copy prompt"});
+    btn.addEventListener("click", function(){ copyText(p, btn); });
+    var lead = prefilled
+      ? where + " should have opened in a new tab with your answers already filled in. It writes all five pieces there in about a minute, then come back here for the posting steps below."
+      : "Your answers are a bit long to send through the link, so your prompt is on your clipboard instead. Paste it into " + where + " and press Enter.";
+    var second = prefilled
+      ? "If the box was empty, your prompt is already on your clipboard. Just paste it and press Enter. If that didn't work either, use the button below."
+      : "If pasting didn't work, use the button below to copy it again.";
+    var body = $("out-body"); body.replaceChildren(
+      el("p",{class:"text",text:lead}),
+      el("p",{class:"note",text:second}),
+      el("div",{class:"actions"}, btn),
+      el("pre",{class:"promptbox",text:p})
+    );
+    $("out-badge").textContent = prefilled ? "Sent to " + where : "Copy and paste"; $("out-badge").className = "badge";
+    $("out-title").textContent = "Over to " + where;
+  }
+
+  function hrefFor(base){
+    var q = encodeURIComponent(buildPrompt(collect()));
+    return (base.length + q.length + 3) > URL_MAX ? base : base + "?q=" + q;
+  }
+  function refreshLinks(){
+    $("open-claude").href = hrefFor("https://claude.ai/new");
+    $("open-gpt").href = hrefFor("https://chatgpt.com/");
+  }
+  $("form").addEventListener("input", refreshLinks);
+  $("form").addEventListener("change", refreshLinks);
+  $("form").addEventListener("submit", function(e){ e.preventDefault(); });
+
+  [["open-claude","Claude"],["open-gpt","ChatGPT"]].forEach(function(pair){
+    $(pair[0]).addEventListener("click", function(e){
+      var d = collect(), miss = validate(d);
+      if(miss.length){ e.preventDefault(); showFormMsg("Please add " + miss.join(", ") + "."); window.scrollTo({top:0,behavior:"smooth"}); return; }
+      showFormMsg("");
+      var base = pair[0]==="open-claude" ? "https://claude.ai/new" : "https://chatgpt.com/";
+      var href = hrefFor(base);
+      e.currentTarget.href = href;
+      try{ if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(buildPrompt(d)).catch(function(){}); }catch(err){}
+      promptPanel(pair[1], href !== base);
+    });
+  });
+
+  $("copy-prompt").addEventListener("click", function(e){
+    var d = collect(), miss = validate(d);
+    if(miss.length){ showFormMsg("Please add " + miss.join(", ") + "."); return; }
+    showFormMsg("");
+    promptPanel("your AI assistant", false);
+    $("out-badge").textContent = "Prompt"; $("out-title").textContent = "Your prompt";
+    copyText(buildPrompt(d), e.currentTarget);
+  });
+
+  $("clear-form").addEventListener("click", function(){
+    $("form").reset(); showFormMsg(""); refreshLinks();
+    $("out-badge").textContent = "Example output"; $("out-badge").className = "badge example";
+    $("out-title").textContent = "What you'll get";
+    renderExample(); $("name").focus();
+  });
+
+  $("copy-contact").addEventListener("click", function(e){
+    copyText("Jason Robinson | Sr. Loan Officer | Prosperity Home Mortgage, LLC | NMLS #1008330\n(913) 687-7247\njason.robinson@phmloans.com", e.currentTarget);
+  });
+
+  renderExample();
+  refreshLinks();
+})();
+</script>
+</body>
+</html>
