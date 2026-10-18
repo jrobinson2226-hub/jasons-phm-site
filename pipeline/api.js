@@ -269,6 +269,31 @@
           }).catch(function (e) { ierr.textContent = msg(e.raw || e.code); });
         } }), linkBox]));
     }
+    if (owner) {
+      var file = el('input', { type: 'file', accept: '.json,application/json', 'aria-label': 'Pipeline export file' });
+      var mres = errLine();
+      card.append(el('div', { class: 'tp-sec' }, [el('h3', { text: 'Import from the Claude version' }),
+        el('p', { class: 'tp-small', text: 'Pick the export file Claude sent you. Files with the same name are replaced with the version in the file.' }),
+        file, mres,
+        el('button', { class: 'btn', type: 'button', text: 'Import', onclick: function (ev) {
+          var btn = ev.currentTarget; mres.textContent = '';
+          var f = file.files && file.files[0]; if (!f) { mres.textContent = 'Choose the file first.'; return; }
+          f.text().then(function (txt) {
+            var j = JSON.parse(txt);
+            if (!j || j.format !== 'team-pipeline-export' || !j.docs) throw new Error('This isn’t a pipeline export file.');
+            var docs = Object.keys(j.docs).map(function (p) { return { path: p, data: j.docs[p] }; });
+            btn.disabled = true;
+            var i = 0, n = docs.length;
+            var next = function () {
+              if (i >= n) return Promise.resolve();
+              var batch = docs.slice(i, i + 8); i += 8;
+              mres.textContent = 'Importing… ' + Math.min(i, n) + ' of ' + n;
+              return call('importDocs', { docs: batch }).then(next);
+            };
+            return next().then(function () { mres.textContent = 'Imported ' + n + ' records. Reloading…'; setTimeout(function () { location.reload(); }, 900); });
+          }).catch(function (e) { btn.disabled = false; mres.textContent = e.raw ? msg(e.raw) : (e.message || 'Import failed.'); });
+        } })]));
+    }
     card.append(el('div', { class: 'tp-sec' }, [el('button', { class: 'btn', type: 'button', text: 'Sign out', onclick: function () {
       call('logout').catch(function () {}).then(function () { setToken(''); location.reload(); });
     } })]));
