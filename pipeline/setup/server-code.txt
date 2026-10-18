@@ -1,0 +1,339 @@
+/**
+ * Team Pipeline server: logins, saving and agent email for jasonhomeloan.com/pipeline.
+ * Data lives in the "Team Pipeline Data" Google Sheet (tab "docs"), one row per record.
+ * The app's screens live on the website; this script only stores, checks access and sends email.
+ *
+ * First-time setup (once): run setupOwner() from the editor, then Deploy > New deployment >
+ * Web app, Execute as: Me, Who has access: Anyone. Paste the /exec URL into the app's config.
+ */
+
+var SHEET_ID = '1nE9wbg-Uz7CV2PasrW0wg5wFURuhHhD29cR6PXoRmzM';
+var TAB = 'docs';
+var APP_URL = 'https://jasonhomeloan.com/pipeline/';
+var OWNER_UID = 'u_2aDWsNc1cndxwjnlgJVlpA';
+var OWNER_EMAIL = 'jason.robinson@phmloans.com';
+var OWNER_NAME = 'Jason Robinson';
+var WORK_CC = 'jason.robinson@phmloans.com';
+var CHUNK = 40000;          // characters per cell (Sheets allows 50,000)
+var MAX_PARTS = 7;          // columns F..L
+var SESSION_DAYS = 60;
+
+/* ---------------- HTTP ---------------- */
+function doGet() { return out({ ok: true, service: 'team-pipeline' }); }
+
+function doPost(e) {
+  var req;
+  try { req = JSON.parse((e && e.postData && e.postData.contents) || '{}'); }
+  catch (err) { return out({ ok: false, error: 'bad_request' }); }
+  try { return out(handle(req)); }
+  catch (err) { return out({ ok: false, error: String((err && err.message) || err) }); }
+}
+
+function out(o) {
+  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
+}
+
+/* ---------------- actions ---------------- */
+function handle(req) {
+  var a = req.action;
+  if (a === 'login') return login(req.email, req.password);
+  if (a === 'acceptInvite') return acceptInvite(req.code, req.password);
+  if (a === 'inviteInfo') return inviteInfo(req.code);
+
+  var me = sessionUser(req.token);
+  if (!me) return { ok: false, error: 'not_signed_in' };
+
+  if (a === 'logout') { props().deleteProperty('sess:' + req.token); return { ok: true }; }
+  if (a === 'whoami') return { ok: true, me: publicUser(me), team: users().map(publicUser), ownerId: OWNER_UID };
+  if (a === 'sync') return sync(me, Number(req.since) || 0);
+  if (a === 'get') { need(canRead(me, req.path)); var d = readDoc(req.path); return { ok: true, doc: d }; }
+  if (a === 'set') { need(canWrite(me, req.path)); return { ok: true, doc: writeDoc(me, req.path, function () { return req.data; }) }; }
+  if (a === 'update') {
+    need(canWrite(me, req.path));
+    return { ok: true, doc: writeDoc(me, req.path, function (cur) { return deepMerge(cur || {}, req.patch || {}); }) };
+  }
+  if (a === 'delete') { need(isOwner(me)); deleteDoc(me, req.path); return { ok: true }; }
+  if (a === 'mail') return mail(me, req);
+  if (a === 'invite') return invite(me, req.email, req.name);
+  if (a === 'removeUser') return removeUser(me, req.uid);
+  if (a === 'importDocs') return importDocs(me, req.docs);
+  if (a === 'changePassword') return changePassword(me, req.password);
+  return { ok: false, error: 'unknown_action' };
+}
+
+function need(ok) { if (!ok) throw new Error('not_allowed'); }
+
+/* ---------------- access rules ---------------- */
+function isOwner(u) { return u.role === 'owner'; }
+function canRead(u, path) {
+  path = cleanPath(path);
+  if (isOwner(u)) return true;
+  return path.indexOf('lanes/' + u.uid + '/') === 0 || path.indexOf('members/') === 0 ||
+    path.indexOf('agents/') === 0 || path.indexOf('config/') === 0 || path === 'digest/' + u.uid;
+}
+function canWrite(u, path) {
+  path = cleanPath(path);
+  if (isOwner(u)) return true;
+  return path.indexOf('lanes/' + u.uid + '/') === 0 || path === 'members/' + u.uid ||
+    path === 'agents/list' || path === 'digest/' + u.uid;
+}
+function cleanPath(p) {
+  p = String(p || '');
+  if (!/^[A-Za-z0-9_\-.~:@+]+(\/[A-Za-z0-9_\-.~:@+]+)*$/.test(p) || p.split('/').length % 2 !== 0) throw new Error('bad_path');
+  return p;
+}
+
+/* ---------------- storage (one row per record) ---------------- */
+function sheet() { return SpreadsheetApp.openById(SHEET_ID).getSheetByName(TAB); }
+
+function loadRows() {
+  var sh = sheet();
+  var last = sh.getLastRow();
+  if (last < 2) return [];
+  var vals = sh.getRange(2, 1, last - 1, 5 + MAX_PARTS).getValues();
+  var rows = [];
+  for (var i = 0; i < vals.length; i++) {
+    var v = vals[i];
+    if (!v[0]) continue;
+    rows.push({ row: i + 2, path: String(v[0]), version: Number(v[1]) || 0, at: Number(v[2]) || 0,
+      by: String(v[3] || ''), deleted: v[4] === true || v[4] === 'TRUE', parts: v.slice(5) });
+  }
+  return rows;
+}
+
+function joinParts(parts) {
+  var s = '';
+  for (var i = 0; i < parts.length; i++) {
+    var p = String(parts[i] || '');
+    if (!p) break;
+    s += p.charAt(0) === '~' ? p.substring(1) : p;
+  }
+  return s;
+}
+
+function splitParts(json) {
+  var parts = [];
+  for (var i = 0; i < json.length; i += CHUNK) parts.push('~' + json.substring(i, i + CHUNK));
+  if (parts.length > MAX_PARTS) throw new Error('record_too_large');
+  while (parts.length < MAX_PARTS) parts.push('');
+  return parts;
+}
+
+function rowToDoc(r) {
+  var data = null;
+  if (!r.deleted) { try { data = JSON.parse(joinParts(r.parts)); } catch (e) { data = null; } }
+  return { path: r.path, version: r.version, updatedAt: r.at, updatedBy: r.by, deleted: r.deleted, data: data };
+}
+
+function readDoc(path) {
+  path = cleanPath(path);
+  var rows = loadRows();
+  for (var i = 0; i < rows.length; i++) if (rows[i].path === path) return rowToDoc(rows[i]);
+  return null;
+}
+
+function writeDoc(me, path, makeData) {
+  path = cleanPath(path);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var rows = loadRows(), found = null;
+    for (var i = 0; i < rows.length; i++) if (rows[i].path === path) { found = rows[i]; break; }
+    var cur = found && !found.deleted ? rowToDoc(found).data : null;
+    var data = makeData(cur);
+    if (!data || typeof data !== 'object') throw new Error('bad_data');
+    var now = Date.now();
+    var version = found ? found.version + 1 : 1;
+    var line = [path, version, now, me.uid, false].concat(splitParts(JSON.stringify(data)));
+    var sh = sheet();
+    if (found) sh.getRange(found.row, 1, 1, line.length).setValues([line]);
+    else sh.appendRow(line);
+    return { path: path, version: version, updatedAt: now, updatedBy: me.uid, deleted: false, data: data };
+  } finally { lock.releaseLock(); }
+}
+
+function deleteDoc(me, path) {
+  path = cleanPath(path);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var rows = loadRows();
+    for (var i = 0; i < rows.length; i++) if (rows[i].path === path) {
+      var line = [path, rows[i].version + 1, Date.now(), me.uid, true].concat(splitParts(''));
+      sheet().getRange(rows[i].row, 1, 1, line.length).setValues([line]);
+      return;
+    }
+  } finally { lock.releaseLock(); }
+}
+
+// Owner only: load many records at once (used to move data over from the Claude version).
+function importDocs(me, docs) {
+  if (!isOwner(me)) return { ok: false, error: 'not_allowed' };
+  if (!Array.isArray(docs) || !docs.length) return { ok: false, error: 'bad_data' };
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var rows = loadRows(), byPath = {}, sh = sheet(), now = Date.now(), appended = [];
+    for (var i = 0; i < rows.length; i++) byPath[rows[i].path] = rows[i];
+    for (var j = 0; j < docs.length; j++) {
+      var p = cleanPath(docs[j].path), data = docs[j].data;
+      if (!data || typeof data !== 'object') continue;
+      var cur = byPath[p];
+      var line = [p, cur ? cur.version + 1 : 1, now + j, me.uid, false].concat(splitParts(JSON.stringify(data)));
+      if (cur) sh.getRange(cur.row, 1, 1, line.length).setValues([line]);
+      else appended.push(line);
+    }
+    if (appended.length) sh.getRange(sh.getLastRow() + 1, 1, appended.length, appended[0].length).setValues(appended);
+    return { ok: true, count: docs.length };
+  } finally { lock.releaseLock(); }
+}
+
+function sync(me, since) {
+  var rows = loadRows(), docs = [], max = since;
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    if (r.at <= since) continue;
+    if (!canRead(me, r.path)) continue;
+    if (since === 0 && r.deleted) continue;
+    docs.push(rowToDoc(r));
+    if (r.at > max) max = r.at;
+  }
+  return { ok: true, docs: docs, cursor: max, now: Date.now() };
+}
+
+function deepMerge(a, b) {
+  for (var k in b) {
+    if (!b.hasOwnProperty(k)) continue;
+    var v = b[k];
+    if (v && typeof v === 'object' && !Array.isArray(v) && a[k] && typeof a[k] === 'object' && !Array.isArray(a[k])) deepMerge(a[k], v);
+    else a[k] = v;
+  }
+  return a;
+}
+
+/* ---------------- people, passwords and sessions ---------------- */
+function props() { return PropertiesService.getScriptProperties(); }
+function users() { try { return JSON.parse(props().getProperty('users') || '[]'); } catch (e) { return []; } }
+function saveUsers(list) { props().setProperty('users', JSON.stringify(list)); }
+function publicUser(u) { return { uid: u.uid, name: u.name, email: u.email, role: u.role }; }
+
+function hashPw(salt, pw) {
+  var s = salt + '|' + pw, bytes;
+  for (var i = 0; i < 300; i++) {
+    bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, s, Utilities.Charset.UTF_8);
+    s = Utilities.base64Encode(bytes) + '|' + salt;
+  }
+  return Utilities.base64Encode(bytes);
+}
+function randomId(n) { var s = ''; while (s.length < n) s += Utilities.getUuid().replace(/-/g, ''); return s.substring(0, n); }
+
+function login(email, password) {
+  email = String(email || '').trim().toLowerCase();
+  var cache = CacheService.getScriptCache(), key = 'fail:' + email;
+  var fails = Number(cache.get(key) || 0);
+  if (fails >= 8) return { ok: false, error: 'locked' };
+  var u = users().filter(function (x) { return x.email === email; })[0];
+  if (!u || hashPw(u.salt, String(password || '')) !== u.hash) {
+    cache.put(key, String(fails + 1), 900);
+    return { ok: false, error: 'wrong_login' };
+  }
+  cache.remove(key);
+  return { ok: true, token: newSession(u.uid), me: publicUser(u) };
+}
+
+function newSession(uid) {
+  var token = randomId(48);
+  props().setProperty('sess:' + token, JSON.stringify({ uid: uid, exp: Date.now() + SESSION_DAYS * 864e5 }));
+  return token;
+}
+
+function sessionUser(token) {
+  if (!token) return null;
+  var raw = props().getProperty('sess:' + token);
+  if (!raw) return null;
+  var s = JSON.parse(raw);
+  if (s.exp < Date.now()) { props().deleteProperty('sess:' + token); return null; }
+  return users().filter(function (x) { return x.uid === s.uid; })[0] || null;
+}
+
+function invite(me, email, name) {
+  if (!isOwner(me)) return { ok: false, error: 'not_allowed' };
+  email = String(email || '').trim().toLowerCase();
+  name = String(name || '').trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || !name) return { ok: false, error: 'need_name_and_email' };
+  var existing = users().filter(function (x) { return x.email === email; })[0];
+  var code = randomId(32);
+  props().setProperty('inv:' + code, JSON.stringify({ email: email, name: name,
+    uid: existing ? existing.uid : 'u_' + randomId(20), role: existing ? existing.role : 'member', exp: Date.now() + 7 * 864e5 }));
+  return { ok: true, link: APP_URL + '?invite=' + code, reset: !!existing };
+}
+
+// Owner only: take away a teammate's access and sign them out everywhere. Their files stay.
+function removeUser(me, uid) {
+  if (!isOwner(me)) return { ok: false, error: 'not_allowed' };
+  if (!uid || uid === me.uid) return { ok: false, error: 'cannot_remove_self' };
+  saveUsers(users().filter(function (x) { return x.uid !== uid; }));
+  var all = props().getProperties();
+  for (var k in all) {
+    if (k.indexOf('sess:') === 0) { try { if (JSON.parse(all[k]).uid === uid) props().deleteProperty(k); } catch (e) {} }
+    if (k.indexOf('inv:') === 0) { try { if (JSON.parse(all[k]).uid === uid) props().deleteProperty(k); } catch (e) {} }
+  }
+  return { ok: true };
+}
+
+function inviteInfo(code) {
+  var raw = props().getProperty('inv:' + String(code || ''));
+  if (!raw) return { ok: false, error: 'invite_not_found' };
+  var inv = JSON.parse(raw);
+  if (inv.exp < Date.now()) return { ok: false, error: 'invite_expired' };
+  return { ok: true, name: inv.name, email: inv.email };
+}
+
+function acceptInvite(code, password) {
+  password = String(password || '');
+  if (password.length < 10) return { ok: false, error: 'password_too_short' };
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    var raw = props().getProperty('inv:' + String(code || ''));
+    if (!raw) return { ok: false, error: 'invite_not_found' };
+    var inv = JSON.parse(raw);
+    if (inv.exp < Date.now()) return { ok: false, error: 'invite_expired' };
+    var list = users().filter(function (x) { return x.uid !== inv.uid && x.email !== inv.email; });
+    var salt = randomId(24);
+    var u = { uid: inv.uid, email: inv.email, name: inv.name, role: inv.role, salt: salt, hash: hashPw(salt, password) };
+    list.push(u); saveUsers(list);
+    props().deleteProperty('inv:' + code);
+    return { ok: true, token: newSession(u.uid), me: publicUser(u) };
+  } finally { lock.releaseLock(); }
+}
+
+function changePassword(me, password) {
+  password = String(password || '');
+  if (password.length < 10) return { ok: false, error: 'password_too_short' };
+  var list = users();
+  for (var i = 0; i < list.length; i++) if (list[i].uid === me.uid) {
+    list[i].salt = randomId(24); list[i].hash = hashPw(list[i].salt, password);
+  }
+  saveUsers(list);
+  return { ok: true };
+}
+
+/* ---------------- email to agents (sent from Jason's Google account) ---------------- */
+function mail(me, req) {
+  if (!isOwner(me)) return { ok: false, error: 'not_allowed' };
+  var to = String(req.to || '').trim();
+  if (!/^[^@\s,;]+@[^@\s,;]+\.[^@\s,;]+$/.test(to)) return { ok: false, error: 'bad_address' };
+  var subject = String(req.subject || '').substring(0, 200);
+  var body = String(req.body || '').substring(0, 20000);
+  MailApp.sendEmail({ to: to, cc: WORK_CC, subject: subject, body: body, name: OWNER_NAME });
+  return { ok: true };
+}
+
+/* ---------------- one-time setup (run from the editor) ---------------- */
+function setupOwner() {
+  var code = randomId(32);
+  props().setProperty('inv:' + code, JSON.stringify({ email: OWNER_EMAIL, name: OWNER_NAME, uid: OWNER_UID, role: 'owner', exp: Date.now() + 7 * 864e5 }));
+  // Touch the sheet and email once so Google asks for both permissions now.
+  sheet().getName(); MailApp.getRemainingDailyQuota();
+  Logger.log('Open this link to set your password: ' + APP_URL + '?invite=' + code);
+}
