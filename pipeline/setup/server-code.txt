@@ -18,6 +18,15 @@ var CHUNK = 40000;          // characters per cell (Sheets allows 50,000)
 var MAX_PARTS = 7;          // columns F..L
 var SESSION_DAYS = 60;
 
+/* ---------------- one-time setup (run from the editor) ---------------- */
+function setupOwner() {
+  var code = randomId(32);
+  props().setProperty('inv:' + code, JSON.stringify({ email: OWNER_EMAIL, name: OWNER_NAME, uid: OWNER_UID, role: 'owner', exp: Date.now() + 7 * 864e5 }));
+  // Touch the sheet and email once so Google asks for both permissions now.
+  sheet().getName(); MailApp.getRemainingDailyQuota();
+  Logger.log('Open this link to set your password: ' + APP_URL + '?invite=' + code);
+}
+
 /* ---------------- HTTP ---------------- */
 function doGet() { return out({ ok: true, service: 'team-pipeline' }); }
 
@@ -327,13 +336,4 @@ function mail(me, req) {
   var body = String(req.body || '').substring(0, 20000);
   MailApp.sendEmail({ to: to, cc: WORK_CC, subject: subject, body: body, name: OWNER_NAME });
   return { ok: true };
-}
-
-/* ---------------- one-time setup (run from the editor) ---------------- */
-function setupOwner() {
-  var code = randomId(32);
-  props().setProperty('inv:' + code, JSON.stringify({ email: OWNER_EMAIL, name: OWNER_NAME, uid: OWNER_UID, role: 'owner', exp: Date.now() + 7 * 864e5 }));
-  // Touch the sheet and email once so Google asks for both permissions now.
-  sheet().getName(); MailApp.getRemainingDailyQuota();
-  Logger.log('Open this link to set your password: ' + APP_URL + '?invite=' + code);
 }
