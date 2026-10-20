@@ -518,8 +518,8 @@ function cadenceTasks(stage,from,pace){
 
 // Cadence slides from the last logged contact in these stages: when a touch is logged late,
 // the remaining steps move out by the same amount so the spacing between steps is kept.
-// Steps never move earlier. PreQual (doc chase / underwriting) and Real Deal stay on fixed dates.
-const SLIDE_STAGES=['lead','opp','preapproval','nurture'];
+// Steps never move earlier. Applies to every stage that has a follow-up cadence.
+const SLIDE_STAGES=['lead','opp','prequal','preapproval','realdeal','nurture'];
 function slideCadence(tasks,deal,touchIso){
   const stage=deal.stage;
   if(!SLIDE_STAGES.includes(stage))return tasks;
