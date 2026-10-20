@@ -512,8 +512,40 @@ function cadenceTasks(stage,from,pace){
   return list.map(c=>{
     let d=c.min!=null?new Date(base.getTime()+c.min*60000):atNine(base,c.d);
     if(c.quiet)d=quietShift(d);
-    return {id:uid(),title:c.t,due:d.toISOString(),owner:roleUid(c.r),done:false,kind:'cadence',stage};
+    return {id:uid(),title:c.t,due:d.toISOString(),owner:roleUid(c.r),done:false,kind:'cadence',stage,from:base.toISOString()};
   });
+}
+
+// Cadence slides from the last logged contact in these stages: when a touch is logged late,
+// the remaining steps move out by the same amount so the spacing between steps is kept.
+// Steps never move earlier. PreQual (doc chase / underwriting) and Real Deal stay on fixed dates.
+const SLIDE_STAGES=['lead','opp','preapproval','nurture'];
+function slideCadence(tasks,deal,touchIso){
+  const stage=deal.stage;
+  if(!SLIDE_STAGES.includes(stage))return tasks;
+  const cad=tasks.filter(t=>t.kind==='cadence'&&t.stage===stage&&t.due);
+  const open=cad.filter(t=>!t.done).sort((a,b)=>a.due<b.due?-1:1);
+  if(!open.length)return tasks;
+  const first=new Date(open[0].due);
+  const prevDues=cad.filter(t=>t.done&&t.due<=open[0].due).map(t=>t.due).sort();
+  const start=open[0].from||(stage==='preapproval'&&deal.milestones&&deal.milestones.pace&&deal.milestones.pace.doneAt)||deal.stageSince||open[0].due;
+  const prev=new Date(prevDues.length?prevDues[prevDues.length-1]:start);
+  const gap=first-prev;if(!(gap>0))return tasks;
+  const shift=new Date(touchIso).getTime()+gap-first.getTime();
+  if(shift<=0)return tasks;
+  const moved={};
+  for(const t of open){
+    const d=new Date(t.due);
+    if(gap<2*3600000&&d-first<2*3600000){
+      // same-day steps on a new lead (first call, intro text): keep the minutes apart, respect quiet hours
+      moved[t.id]=quietShift(new Date(d.getTime()+shift)).toISOString();
+    }else{
+      // day-based steps: move by whole days and keep the step's time of day
+      const n=new Date(d.getTime()+shift);n.setHours(d.getHours(),d.getMinutes(),0,0);
+      if(n<=d)continue;moved[t.id]=n.toISOString();
+    }
+  }
+  return tasks.map(t=>moved[t.id]?Object.assign({},t,{due:moved[t.id]}):t);
 }
 
 /* ---------- writes ---------- */
@@ -590,6 +622,7 @@ function saveLog(d,item,dp,note,nextTitle,nextDue,notifyAgent){
   const st=dispoStage(d,dp);
   if(st)Object.assign(patch,stagePatch(d,st,tasks));else patch.tasks=tasks;
   if(nextTitle&&nextDue&&!st){patch.tasks=patch.tasks.filter(t=>t.done||t.kind!=='cadence');}
+  if(!st)patch.tasks=slideCadence(patch.tasks,d,now);
   if(nextTitle&&nextDue)patch.tasks.push({id:uid(),title:nextTitle,due:nextDue,owner:(item&&item.owner)||S.me,done:false,kind:'manual',stage:st||d.stage});
   const notes=clone(d.notes||[]);notes.push({at:now,by:S.me,text:dp.l+(note?' - '+note:'')});patch.notes=notes.slice(-200);
   patch.lastDisposition=dp.l;patch.lastTouchAt=now;
@@ -877,6 +910,13 @@ function journey(d,compact){
 
 /* ---------- log card (top of the borrower file) ---------- */
 const byDue=(a,b)=>(a.due||'9')<(b.due||'9')?-1:1;
+// What comes up next once this touch is logged (cadence already slid from now)
+function nextAfterLog(d,item){
+  let tasks=clone(d.tasks||[]);
+  if(item&&item.type==='task')tasks=tasks.map(t=>t.id===item.id?Object.assign(t,{done:true}):t);
+  tasks=slideCadence(tasks,d,nowIso());
+  return openItemsFor(Object.assign({},d,{tasks})).filter(i=>!item||i.id!==item.id).sort(byDue)[0]||null;
+}
 function logTarget(d){
   const open=openItemsFor(d).sort(byDue);
   if(S.log&&S.log.dealId===d.id&&S.log.id){const f=open.find(i=>i.type===S.log.type&&i.id===S.log.id);if(f)return f;}
@@ -922,12 +962,13 @@ function logCard(d){
   let nextBlock=null,titleIn=null,dueIn=null;
   if(dp){
     const st=dispoStage(d,dp);
-    const others=openItemsFor(d).filter(i=>!item||i.id!==item.id).sort(byDue);
     const lines=[];
     if(st)lines.push(h('div',{class:'outcome',text:`Moves to ${stageName(st)}`+(CADENCE[st]?`, and its follow-up cadence starts.`:'.')}));
     let preT='',preD='';
+    const nx=(!st&&(dp.next==='cadence'||dp.next==='optional'))?nextAfterLog(d,item):null;
+    if(nx&&dp.next==='optional')lines.push(h('div',{class:'note',text:`Next up: ${nx.title} · ${fmtDue(nx.due)}. Add a follow-up below to replace the cadence.`}));
     if(dp.next==='cadence'){
-      if(others.length)lines.push(h('div',{class:'note',text:`Cadence continues. Next up: ${others[0].title} · ${fmtDue(others[0].due)}. Schedule a follow-up below to replace the cadence.`}));
+      if(nx)lines.push(h('div',{class:'note',text:`Cadence continues. Next up: ${nx.title} · ${fmtDue(nx.due)}. Schedule a follow-up below to replace the cadence.`}));
       else {preT='Call';preD=toLocalInput(atNine(new Date(),2).toISOString());}
     }else if(typeof dp.next==='object'){preT=dp.next.title;preD=dp.next.pick?'':toLocalInput(atNine(new Date(),dp.next.days||1).toISOString());}
     {
