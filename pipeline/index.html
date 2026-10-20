@@ -430,6 +430,9 @@ function dial(p){const href=telHref(p);if(!href)return;const num=fmtPhone(p);let
   try{w=window.open(href,'_blank');}catch(e){}
   if(!w){try{window.top.location.href=href;}catch(e){try{window.location.href=href;}catch(e2){}}}
   try{navigator.clipboard.writeText(num).then(()=>toast(`Calling ${num}. If nothing opens, it's copied: paste it into your Phone app.`),()=>toast(`Calling ${num}`));}catch(e){toast(`Calling ${num}`);}}
+// Opens your phone's Messages app to this number. You type and send it yourself; nothing is sent by the app.
+function smsHref(p){const d=String(p||'').replace(/\D/g,'').replace(/^1(?=\d{10}$)/,'');return d.length===10?`sms:+1${d}`:null;}
+function smsLink(p,label){const href=smsHref(p);return href?h('a',{class:'tel',href,title:'Text '+fmtPhone(p),onclick:e=>e.stopPropagation(),text:label||'Text'}):null;}
 function telLink(p,cls){const href=telHref(p);if(!href)return h('span',{text:p||''});return h('a',{class:'tel'+(cls?' '+cls:''),href,title:'Call '+fmtPhone(p),onclick:e=>e.stopPropagation(),text:fmtPhone(p)});}
 function fmtPhone(p){const d=String(p||'').replace(/\D/g,'').replace(/^1(?=\d{10}$)/,'');return d.length===10?`(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`:(p||'');}
 function atNine(base,days){const d=new Date(base);d.setDate(d.getDate()+days);d.setHours(9,0,0,0);return d;}
@@ -760,7 +763,8 @@ function itemRow(it){
         deal?h('span',{class:'chip'+(deal.stage==='realdeal'?' rd':''),text:stageName(deal.stage)}):null,
         deal&&it.type!=='ms'&&nextMilestone(deal)&&nextMilestone(deal).next?h('span',{text:'Next status item: '+nextMilestone(deal).next.m.l}):null,
         it.type==='ms'?h('span',{class:'chip ms',text:'Status item'}):null,
-        deal&&deal.phone?telLink(deal.phone):null)),
+        deal&&deal.phone?telLink(deal.phone):null,
+        deal&&deal.phone?smsLink(deal.phone):null)),
     h('div',{class:'who'},h('span',{class:'due',text:ds==='late'?'Past due · '+fmtDue(it.due):fmtDue(it.due)}),S.who==='me'?null:nameOf(it.owner)));
 }
 function addLine(){
@@ -935,7 +939,7 @@ function logCard(d){
     h('div',{},h('div',{class:'eyebrow',text:item?(item.type==='ms'?'Status item':'Log this follow-up'):'Log a touch'}),
       h('div',{class:'logtitle',text:item?item.title:'No open follow-up'}),
       item?h('div',{class:'logdue '+ds,text:(ds==='late'?'Past due · ':'')+fmtDue(item.due)+(item.owner&&item.owner!==S.me?' · '+nameOf(item.owner):'')}):null),
-    d.phone?h('div',{class:'bigphone'},telLink(d.phone),h('button',{class:'btn',type:'button',onclick:()=>copy(fmtPhone(d.phone)),text:'Copy'})):null);
+    d.phone?h('div',{class:'bigphone'},telLink(d.phone),smsHref(d.phone)?h('a',{class:'btn',href:smsHref(d.phone),text:'Text'}):null,h('button',{class:'btn',type:'button',onclick:()=>copy(fmtPhone(d.phone)),text:'Copy'})):null);
 
   if(item&&item.type==='ms'&&item.id==='pace'){
     return h('section',{class:'sec log'},head,
@@ -1014,6 +1018,7 @@ function drawerView(){
       h('label',{},'Phone',h('div',{class:'phone'},
         h('input',{type:'tel',id:'f-phone',value:fmtPhone(d.phone),onchange:e=>patchDeal(d,{phone:fmtPhone(e.target.value)})}),
         d.phone?h('a',{class:'btn ghost',href:telHref(d.phone),text:'Call'}):null,
+        smsHref(d.phone)?h('a',{class:'btn ghost',href:smsHref(d.phone),text:'Text'}):null,
         d.phone?h('button',{class:'btn ghost',type:'button',onclick:()=>copy(fmtPhone(d.phone)),text:'Copy'}):null)),
       field('Email','email','email',{full:true}),
       h('label',{},'Lead source',h('select',{id:'f-source',onchange:e=>patchDeal(d,{source:e.target.value})},
@@ -1022,7 +1027,7 @@ function drawerView(){
           onchange:e=>{if(!e.target.dataset.picked)patchDeal(d,{agentName:e.target.value.trim()});delete e.target.dataset.picked;}});
         return agentSuggestBox('Referring agent',ai,a=>{ai.dataset.picked='1';patchDeal(d,{agentName:a.n,agentEmail:a.e||d.agentEmail||'',agentPhone:fmtPhone(a.p)||d.agentPhone||''});toast(`${a.n} added`);});})(),
       field('Agent phone','agentPhone','tel'),
-      d.agentPhone&&telHref(d.agentPhone)?h('div',{style:'align-self:end;padding-bottom:8px'},'Call agent: ',telLink(d.agentPhone)):null,
+      d.agentPhone&&telHref(d.agentPhone)?h('div',{style:'align-self:end;padding-bottom:8px'},'Call agent: ',telLink(d.agentPhone),smsHref(d.agentPhone)?[' · ',smsLink(d.agentPhone,'Text agent')]:null):null,
       field('Agent email','agentEmail','email',{full:true})));
 
   let loan=null;
