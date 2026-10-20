@@ -220,6 +220,11 @@ a.smsbtn{display:block;text-align:center;padding:12px;font-size:17px;text-decora
 .modal .box{background:var(--bg);width:min(600px,100%);max-height:calc(100% - 32px);overflow-y:auto;border-radius:4px;box-shadow:var(--shadow)}
 .modal .box form{padding:16px;display:grid;gap:16px}
 .err{color:var(--late);font-weight:600}
+.csheet{position:fixed;inset:0;z-index:55;background:rgba(0,20,35,.45);display:flex;align-items:flex-end;justify-content:center}
+.csheet .cbox{background:var(--bg);width:min(480px,100%);padding:14px 16px calc(16px + env(safe-area-inset-bottom,0px));border-radius:10px 10px 0 0;box-shadow:var(--shadow);display:grid;gap:10px}
+.csheet .cnum{text-align:center;font-weight:700;font-size:17px;padding:2px 0 4px}
+.csheet .btn{display:block;text-align:center;text-decoration:none;font-size:17px;padding:13px 14px;color:inherit}
+.csheet .btn.primary{color:var(--accent-ink)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:3px;z-index:60;font-weight:600}
 
 /* file search (masthead) */
@@ -433,7 +438,23 @@ function dial(p){const href=telHref(p);if(!href)return;const num=fmtPhone(p);let
 // Opens your phone's Messages app to this number. You type and send it yourself; nothing is sent by the app.
 function smsHref(p){const d=String(p||'').replace(/\D/g,'').replace(/^1(?=\d{10}$)/,'');return d.length===10?`sms:+1${d}`:null;}
 function smsLink(p,label){const href=smsHref(p);return href?h('a',{class:'tel',href,title:'Text '+fmtPhone(p),onclick:e=>e.stopPropagation(),text:label||'Text'}):null;}
-function telLink(p,cls){const href=telHref(p);if(!href)return h('span',{text:p||''});return h('a',{class:'tel'+(cls?' '+cls:''),href,title:'Call '+fmtPhone(p),onclick:e=>e.stopPropagation(),text:fmtPhone(p)});}
+// On a phone, tapping a number asks Call or Text. On a computer it dials as before.
+const isPhone=()=>{try{return matchMedia('(pointer:coarse)').matches&&matchMedia('(max-width:900px)').matches;}catch(e){return false;}};
+function callOrText(p){
+  const old=document.querySelector('.csheet');if(old)old.remove();
+  const num=fmtPhone(p),sms=smsHref(p);
+  const shut=()=>{sheet.remove();document.removeEventListener('keydown',esc);};
+  const esc=e=>{if(e.key==='Escape')shut();};
+  const sheet=h('div',{class:'csheet',role:'dialog','aria-modal':'true','aria-label':'Call or text '+num,onclick:e=>{if(e.target===sheet)shut();}},
+    h('div',{class:'cbox'},
+      h('div',{class:'cnum',text:num}),
+      h('a',{class:'btn primary',href:telHref(p),onclick:()=>setTimeout(shut,300),text:'Call'}),
+      sms?h('a',{class:'btn',href:sms,onclick:()=>setTimeout(shut,300),text:'Text'}):null,
+      h('button',{class:'btn',type:'button',onclick:()=>{copy(num);shut();},text:'Copy number'}),
+      h('button',{class:'btn',type:'button',onclick:shut,text:'Cancel'})));
+  document.body.append(sheet);document.addEventListener('keydown',esc);
+}
+function telLink(p,cls){const href=telHref(p);if(!href)return h('span',{text:p||''});return h('a',{class:'tel'+(cls?' '+cls:''),href,title:'Call or text '+fmtPhone(p),onclick:e=>{e.stopPropagation();if(isPhone()){e.preventDefault();callOrText(p);}},text:fmtPhone(p)});}
 function fmtPhone(p){const d=String(p||'').replace(/\D/g,'').replace(/^1(?=\d{10}$)/,'');return d.length===10?`(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`:(p||'');}
 function atNine(base,days){const d=new Date(base);d.setDate(d.getDate()+days);d.setHours(9,0,0,0);return d;}
 function quietShift(d){const h=d.getHours();if(h>=20){d.setDate(d.getDate()+1);d.setHours(9,0,0,0);}else if(h<9){d.setHours(9,0,0,0);}return d;}
