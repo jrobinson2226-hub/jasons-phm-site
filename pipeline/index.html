@@ -482,7 +482,11 @@ function openItemsFor(deal){
   const items=[];
   if(deal.stage==='prequal'&&deal.pqInactive)return items;
   const closeEnd=deal.closeDate?atNine(parseDay(deal.closeDate),0).getTime()+15*3600e3:null;
-  for(const t of deal.tasks||[])if(!t.done&&!(t.kind==='cadence'&&t.stage==='realdeal'&&closeEnd&&new Date(t.due).getTime()>closeEnd))items.push({type:'task',deal,task:t,id:t.id,title:t.title,due:t.due,owner:t.owner});
+  // Cadence runs one step at a time: only the next open step per stage is on the follow-up list.
+  // The step after it shows up once this one is logged (and slides from that logged contact).
+  const nextCad={};
+  for(const t of deal.tasks||[])if(!t.done&&t.kind==='cadence'&&t.due){const k=t.stage||'';if(!nextCad[k]||t.due<nextCad[k].due)nextCad[k]=t;}
+  for(const t of deal.tasks||[])if(!t.done&&!(t.kind==='cadence'&&nextCad[t.stage||'']!==t)&&!(t.kind==='cadence'&&t.stage==='realdeal'&&closeEnd&&new Date(t.due).getTime()>closeEnd))items.push({type:'task',deal,task:t,id:t.id,title:t.title,due:t.due,owner:t.owner});
   if(MS_STAGES.includes(deal.stage)||deal.stage==='closed')for(const m of MILESTONES){
     if(deal.stage==='closed'?!m.post:m.g!==deal.stage)continue;const i=msInfo(deal,m);
     if(i.done||i.skipped||!i.due)continue;
@@ -1317,7 +1321,12 @@ async function createLead(v){
       if(v.phone&&S.isOwner){
         const fc=firstCallTime(now);
         tasks=tasks.filter(t=>!/^Text if no answer/.test(t.title));
-        if(tasks[0]){tasks[0].title='Call (intro text sent)';tasks[0].due=fc.due.toISOString();}
+        if(tasks[0]){
+          // Keep the same-day steps spaced after the first call, not after the moment the lead was added
+          const steps=SRC_CADENCE[v.source]||SRC_CADENCE['Agent referral / Other'];
+          tasks[0].title='Call (intro text sent)';tasks[0].due=fc.due.toISOString();
+          steps.forEach((c,i)=>{if(i>0&&c.min!=null&&tasks[i]&&steps[0].min!=null)tasks[i].due=quietShift(new Date(fc.due.getTime()+(c.min-steps[0].min)*60000)).toISOString();});
+        }
         v._intro={text:introText(v.name,v.agent,fc.when),when:fc.when};
         v._intro.sms=introSms(v.phone,v.agent,v._intro.text);
       }
