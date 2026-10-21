@@ -509,8 +509,9 @@ function openItemsFor(deal){
   // Cadence runs one step at a time: only the next open step per stage is on the follow-up list.
   // The step after it shows up once this one is logged (and slides from that logged contact).
   const nextCad={};
-  for(const t of deal.tasks||[])if(!t.done&&t.kind==='cadence'&&t.due){const k=t.stage||'';if(!nextCad[k]||t.due<nextCad[k].due)nextCad[k]=t;}
-  for(const t of deal.tasks||[])if(!t.done&&!(t.kind==='cadence'&&nextCad[t.stage||'']!==t)&&!(t.kind==='cadence'&&t.stage==='realdeal'&&closeEnd&&new Date(t.due).getTime()>closeEnd))items.push({type:'task',deal,task:t,id:t.id,title:t.title,due:t.due,owner:t.owner});
+  const isCad=t=>t.kind!=='manual';
+  for(const t of deal.tasks||[])if(!t.done&&isCad(t)&&t.due){const k=t.stage||deal.stage;if(!nextCad[k]||t.due<nextCad[k].due)nextCad[k]=t;}
+  for(const t of deal.tasks||[])if(!t.done&&!(isCad(t)&&nextCad[t.stage||deal.stage]!==t)&&!(t.kind==='cadence'&&t.stage==='realdeal'&&closeEnd&&new Date(t.due).getTime()>closeEnd))items.push({type:'task',deal,task:t,id:t.id,title:t.title,due:t.due,owner:t.owner});
   if(MS_STAGES.includes(deal.stage)||deal.stage==='closed')for(const m of MILESTONES){
     if(deal.stage==='closed'?!m.post:m.g!==deal.stage)continue;const i=msInfo(deal,m);
     if(i.done||i.skipped||!i.due)continue;
@@ -555,16 +556,25 @@ function slideCadence(tasks,deal,touchIso){
   const open=cad.filter(t=>!t.done).sort((a,b)=>a.due<b.due?-1:1);
   if(!open.length)return tasks;
   const first=new Date(open[0].due);
+  const touch=new Date(touchIso).getTime();
+  // Same-day follow-up (e.g. "second attempt today"): due 2 hours after the logged contact
+  if(open[0].sameDay||/attempt today/i.test(open[0].title||'')){
+    const target=quietShift(new Date(touch+SAME_DAY_GAP)).toISOString();
+    return tasks.map(t=>t.id===open[0].id?Object.assign({},t,{due:target}):t);
+  }
   const prevDues=cad.filter(t=>t.done&&t.due<=open[0].due).map(t=>t.due).sort();
   const start=open[0].from||(stage==='preapproval'&&deal.milestones&&deal.milestones.pace&&deal.milestones.pace.doneAt)||deal.stageSince||open[0].due;
   const prev=new Date(prevDues.length?prevDues[prevDues.length-1]:start);
   const gap=first-prev;if(!(gap>0))return tasks;
-  const shift=new Date(touchIso).getTime()+gap-first.getTime();
-  if(shift<=0)return tasks;
+  return shiftOpen(tasks,open,first,touch+gap-first.getTime(),gap<2*3600000);
+}
+const SAME_DAY_GAP=2*3600000;
+function shiftOpen(tasks,open,first,shift,sameDayFirst){
+  if(!(shift>0))return tasks;
   const moved={};
   for(const t of open){
     const d=new Date(t.due);
-    if(gap<2*3600000&&d-first<2*3600000){
+    if(sameDayFirst&&d-first<2*3600000){
       // same-day steps on a new lead (first call, intro text): keep the minutes apart, respect quiet hours
       moved[t.id]=quietShift(new Date(d.getTime()+shift)).toISOString();
     }else{
@@ -1200,7 +1210,7 @@ function walkView(){
 // Lead-source cadences carried over from the PHM Lead Tracker
 const SRC_CADENCE={
   // Online: condensed. Call + text twice on day one, done in 10 days
-  'Online':[{min:5,t:'Call + text: first contact',quiet:1},{min:240,t:'Call + text: second attempt today',quiet:1},{d:2,t:'Call'},{d:3,t:'Text'},{d:5,t:'Call + text'},{d:7,t:'Text'},{d:10,t:'Last call, then move to Nurture or Dead'}],
+  'Online':[{min:5,t:'Call + text: first contact',quiet:1},{min:125,t:'Call + text: second attempt today',quiet:1,same:1},{d:2,t:'Call'},{d:3,t:'Text'},{d:5,t:'Call + text'},{d:7,t:'Text'},{d:10,t:'Last call, then move to Nurture or Dead'}],
   'Agent referral / Other':[{min:60,t:'Call: first contact',quiet:1},{d:1,t:'Call'},{d:3,t:'Call and text'},{d:7,t:'Call'},{d:14,t:'Call'},{d:28,t:'Check in'},{d:42,t:'Check in'}],
 };
 const ADD_SOURCES=Object.keys(SRC_CADENCE);
@@ -1219,7 +1229,7 @@ function srcTasks(source,base){
   return (SRC_CADENCE[source]||SRC_CADENCE['Agent referral / Other']).map(c=>{
     let d=c.min!=null?new Date(base.getTime()+c.min*60000):atNine(base,c.d);
     if(c.quiet)d=quietShift(d);
-    return {id:uid(),title:c.t,due:d.toISOString(),owner:S.ownerId||S.me,done:false,kind:'cadence',stage:'lead'};
+    return Object.assign({id:uid(),title:c.t,due:d.toISOString(),owner:S.ownerId||S.me,done:false,kind:'cadence',stage:'lead'},c.same?{sameDay:1}:{});
   });
 }
 function agentMatches(q){
