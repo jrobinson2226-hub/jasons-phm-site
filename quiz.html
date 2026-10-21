@@ -346,6 +346,8 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px;margin-top:24px}
 
   // Lead capture endpoint: paste the Google Apps Script web app URL here.
   var LEAD_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwGx-wmc0WpEEosf5CQOEUWkctowCNvC6NQdNrAGaKD-zQJWjzx1YebK5KhqqgRIuz_/exec';
+  // Team Pipeline server: quiz leads land in the pipeline as Online leads (answers and results in a note)
+  var PIPELINE_ENDPOINT = 'https://script.google.com/macros/s/AKfycbz438WQ2Jo6ewYZ1YXrMGOPwgCE1MWtLyVToIQdfTu6-6yMSdVrOCiPbVW8WV0MAltX0A/exec';
 
   var params = new URLSearchParams(location.search);
   var src = { agent: params.get('agent') || '', src: params.get('src') || params.get('utm_source') || '', listing: params.get('listing') || '' };
@@ -553,9 +555,21 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px;margin-top:24px}
       send_copy:false
     };
     send.disabled = true; send.textContent = 'Sending…';
-    fetch(LEAD_ENDPOINT, {method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(payload)})
-      .then(function(){ track('lead_submit'); unlock(d.name.split(' ')[0]); })
-      .catch(function(){ send.disabled = false; send.textContent = 'Show my full results'; err.textContent = 'Something went wrong. Please call or text (913) 687-7247.'; });
+    var lead = { name:d.name, phone:d.phone, email:d.email, timeline:d.timeline, agent:d.agent || '',
+      referral_agent:src.agent, source:src.src, answers:qa,
+      results:payload.results_detail.map(function(m){ return {name:m.name, amount:m.amount, status:m.status}; }), notes:res.notes };
+    // 1) Pipeline. 2) Website Leads sheet as a backup log; it only emails Jason if the pipeline didn't take the lead.
+    fetch(PIPELINE_ENDPOINT, {method:'POST', body:JSON.stringify({action:'quizLead', lead:lead}), redirect:'follow'})
+      .then(function(r){ return r.json(); }).then(function(j){ return !!(j && j.ok); }).catch(function(){ return false; })
+      .then(function(ok){
+        payload.pipeline_ok = ok;
+        return fetch(LEAD_ENDPOINT, {method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(payload)})
+          .then(function(){ return true; }, function(){ return ok; });
+      })
+      .then(function(saved){
+        if(!saved){ send.disabled = false; send.textContent = 'Show my full results'; err.textContent = 'Something went wrong. Please call or text (913) 687-7247.'; return; }
+        track('lead_submit'); unlock(d.name.split(' ')[0]);
+      });
   });
 
   document.getElementById('redo').addEventListener('click', function(){

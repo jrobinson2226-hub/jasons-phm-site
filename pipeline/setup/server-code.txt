@@ -48,6 +48,7 @@ function handle(req) {
   if (a === 'login') return login(req.email, req.password);
   if (a === 'acceptInvite') return acceptInvite(req.code, req.password);
   if (a === 'inviteInfo') return inviteInfo(req.code);
+  if (a === 'quizLead') return quizLead(req.lead);
 
   var me = sessionUser(req.token);
   if (!me) return { ok: false, error: 'not_signed_in' };
@@ -336,4 +337,136 @@ function mail(me, req) {
   var body = String(req.body || '').substring(0, 20000);
   MailApp.sendEmail({ to: to, cc: WORK_CC, subject: subject, body: body, name: OWNER_NAME });
   return { ok: true };
+}
+
+/* ---------------- website quiz leads (public, no login) ---------------- */
+// The DPA quiz on jasonhomeloan.com posts here. A new person becomes a Lead (source "Online")
+// in Jason's lane with the Online call/text cadence; someone already in the pipeline (same phone,
+// email or full name) gets the quiz added as a note plus one follow-up, instead of a duplicate.
+var TZ = 'America/Chicago';
+var WEB_UID = 'web';   // shows as "Website quiz" on notes
+// Keep in step with SRC_CADENCE['Online'] in the app (pipeline/index.html)
+var ONLINE_CADENCE = [
+  { min: 5, t: 'Call + text: first contact', quiet: 1 }, { min: 240, t: 'Call + text: second attempt today', quiet: 1 },
+  { d: 2, t: 'Call' }, { d: 3, t: 'Text' }, { d: 5, t: 'Call + text' }, { d: 7, t: 'Text' },
+  { d: 10, t: 'Last call, then move to Nurture or Dead' }
+];
+
+function quizLead(v) {
+  v = v || {};
+  var s = function (x, n) { return String(x === undefined || x === null ? '' : x).trim().substring(0, n || 200); };
+  var name = s(v.name, 120), phone = s(v.phone, 40), email = s(v.email, 160).toLowerCase();
+  if (!name || (!digits10(phone) && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))) return { ok: false, error: 'need_name_and_contact' };
+
+  // Light abuse limits: 3 per phone/email per hour, 40 quiz leads per hour overall
+  var cache = CacheService.getScriptCache();
+  var who = 'quiz:' + (digits10(phone) || email);
+  var mine = Number(cache.get(who) || 0), all = Number(cache.get('quiz:all') || 0);
+  if (mine >= 3 || all >= 40) return { ok: false, error: 'slow_down' };
+  cache.put(who, String(mine + 1), 3600); cache.put('quiz:all', String(all + 1), 3600);
+
+  var now = new Date(), nowS = now.toISOString();
+  var note = { at: nowS, by: WEB_UID, text: quizNote(v, s) };
+  var me = { uid: WEB_UID };
+
+  var hit = findQuizMatch(name, phone, email);
+  if (hit) {
+    var doc = writeDoc(me, hit.path, function (cur) {
+      cur = cur || hit.data;
+      var notes = (cur.notes || []).concat([note]);
+      var tasks = (cur.tasks || []).concat([{ id: tid(), title: 'Call: took the website quiz again (see note)',
+        due: quietShift(new Date(now.getTime() + 5 * 60000)).toISOString(), owner: OWNER_UID, done: false, kind: 'manual', stage: cur.stage || 'lead' }]);
+      if (!cur.email && email) cur.email = email;
+      if (!cur.phone && phone) cur.phone = fmtPhone(phone);
+      cur.notes = notes; cur.tasks = tasks; cur.updatedAt = nowS; cur.updatedBy = WEB_UID;
+      return cur;
+    });
+    return { ok: true, matched: true, id: doc.data.id };
+  }
+
+  var id = tid();
+  var deal = { id: id, name: name, phone: fmtPhone(phone), email: email, source: 'Online',
+    agentName: s(v.agent, 120), agentEmail: '', agentPhone: '',
+    stage: 'lead', stageSince: nowS, stageDates: { lead: nowS }, program: '', contractDate: '', closeDate: '', closeTime: '', piw: false,
+    milestones: {}, tasks: onlineTasks(now), notes: [note], lastDisposition: '', lastTouchAt: null,
+    createdAt: nowS, createdBy: WEB_UID, updatedAt: nowS, updatedBy: WEB_UID, lane: OWNER_UID };
+  writeDoc(me, 'lanes/' + OWNER_UID + '/deals/' + id, function () { return deal; });
+  return { ok: true, matched: false, id: id };
+}
+
+function quizNote(v, s) {
+  var L = ['Took the down payment help quiz on jasonhomeloan.com'];
+  if (v.timeline) L.push('Timeline: ' + s(v.timeline));
+  if (v.agent) L.push('Working with agent: ' + s(v.agent, 120));
+  if (v.referral_agent) L.push('Quiz link shared by: ' + s(v.referral_agent, 120));
+  if (v.source) L.push('Came from: ' + s(v.source, 80));
+  L.push('', 'ANSWERS');
+  (Array.isArray(v.answers) ? v.answers : []).slice(0, 15).forEach(function (x) { L.push('• ' + s(x.q) + ' ' + s(x.a)); });
+  var res = Array.isArray(v.results) ? v.results.slice(0, 10) : [];
+  L.push('', 'PRELIMINARY RESULTS SHOWN (' + res.length + ')');
+  if (!res.length) L.push('No programs matched from the answers alone.');
+  res.forEach(function (r, i) { L.push((i + 1) + '. ' + s(r.name) + ': ' + s(r.amount) + ' (' + s(r.status) + ')'); });
+  (Array.isArray(v.notes) ? v.notes.slice(0, 5) : []).forEach(function (n) { L.push('Note shown: ' + s(n, 400)); });
+  return L.join('\n');
+}
+
+function findQuizMatch(name, phone, email) {
+  var p = digits10(phone), n = normName(name), rows = loadRows(), best = null;
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    if (r.deleted || !/^lanes\/[^\/]+\/deals\/[^\/]+$/.test(r.path)) continue;
+    var d = rowToDoc(r).data; if (!d) continue;
+    var rank = 0;
+    if (p && digits10(d.phone) === p) rank = 3;
+    else if (email && String(d.email || '').trim().toLowerCase() === email) rank = 2;
+    else if (n.indexOf(' ') > 0 && normName(d.name) === n) rank = 1;
+    if (rank && (!best || rank > best.rank || (rank === best.rank && r.at > best.at))) best = { rank: rank, at: r.at, path: r.path, data: d };
+  }
+  return best;
+}
+
+function onlineTasks(base) {
+  var first = null;
+  return ONLINE_CADENCE.map(function (c, i) {
+    var d = c.min != null ? new Date(base.getTime() + c.min * 60000) : atNineCT(base, c.d);
+    // Same-day steps stay spaced after the first call, even when quiet hours pushed it to 9 AM
+    if (c.min != null && i > 0 && first) d = new Date(first.getTime() + (c.min - ONLINE_CADENCE[0].min) * 60000);
+    if (c.quiet) d = quietShift(d);
+    if (i === 0) first = d;
+    return { id: tid(), title: c.t, due: d.toISOString(), owner: OWNER_UID, done: false, kind: 'cadence', stage: 'lead' };
+  });
+}
+
+// Times in Central: 9:00 AM a number of days out, and pushing anything after 8 PM / before 9 AM to 9 AM
+function atNineCT(base, days) {
+  var ymd = Utilities.formatDate(new Date(base.getTime() + days * 864e5), TZ, 'yyyy-MM-dd');
+  var noon = new Date(ymd + 'T12:00:00Z');
+  var off = Utilities.formatDate(noon, TZ, 'XXX');
+  return new Date(ymd + 'T09:00:00' + off);
+}
+function quietShift(d) {
+  var h = Number(Utilities.formatDate(d, TZ, 'H'));
+  if (h >= 20) return atNineCT(d, 1);
+  if (h < 9) return atNineCT(d, 0);
+  return d;
+}
+
+function digits10(p) { var d = String(p || '').replace(/\D/g, ''); if (d.length === 11 && d.charAt(0) === '1') d = d.substring(1); return d.length === 10 ? d : ''; }
+function fmtPhone(p) { var d = digits10(p); return d ? '(' + d.substring(0, 3) + ') ' + d.substring(3, 6) + '-' + d.substring(6) : String(p || ''); }
+function normName(n) { return String(n || '').toLowerCase().replace(/[^a-z& ]/g, ' ').replace(/\s+/g, ' ').trim(); }
+function tid() { return Date.now().toString(36) + randomId(6).toLowerCase(); }
+
+// Run from the editor to try it: adds a test lead, logs what was saved, then removes it.
+function testQuizLead() {
+  var r = quizLead({ name: 'Quiz Test', phone: '(555) 555-0142', email: 'quiztest@example.com', timeline: 'Just exploring',
+    answers: [{ q: 'Where are you looking to buy?', a: 'Missouri' }, { q: 'Price range', a: '$250k-$400k' }],
+    results: [{ name: 'MHDC First Place', amount: '4% of the loan toward your down payment', status: 'Looks like a fit' }] });
+  Logger.log(JSON.stringify(r));
+  if (r.ok && !r.matched) {
+    var path = 'lanes/' + OWNER_UID + '/deals/' + r.id, d = readDoc(path).data;
+    Logger.log(d.name + ' | ' + d.source + ' | ' + d.stage + ' | ' + d.tasks.length + ' follow-ups | first due ' + d.tasks[0].due);
+    Logger.log(d.notes[0].text);
+    deleteDoc({ uid: WEB_UID }, path);
+    Logger.log('Test lead removed.');
+  }
 }
