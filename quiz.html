@@ -312,10 +312,11 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px;margin-top:24px}
       <div id="full" hidden>
         <p class="sent" id="sent"></p>
         <h2 class="full-h">Your complete list</h2>
+        <p class="sum">Jason will personally review your answers, confirm which of these you qualify for, and reach out within one business day. Think of this list as a starting point, not an approval.</p>
         <div id="allMatches"></div>
         <div class="callout">
           <h3>What happens next</h3>
-          <p>Jason will reach out within one business day to confirm these with your real numbers. Want to talk sooner? Call or text <a href="tel:+19136877247" style="color:#fff">(913) 687-7247</a>.</p>
+          <p>Watch for a call from Jason at <b>(913) 687-7247</b>. He'll go over your real numbers and what each option means for your payment. Want to talk sooner? Call or text <a href="tel:+19136877247" style="color:#fff">(913) 687-7247</a>.</p>
         </div>
       </div>
 
@@ -500,7 +501,7 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px;margin-top:24px}
     var res = lastResult || {list:[], notes:[]};
     document.getElementById('pre').hidden = true;
     document.getElementById('headline').textContent = res.list.length ? 'Your results are confirmed' : 'Thanks, you’re all set';
-    document.getElementById('sum').textContent = 'Every program that looks worth exploring, based on your answers.';
+    document.getElementById('sum').textContent = '';
     document.getElementById('preview').innerHTML = '';
     document.getElementById('locked').innerHTML = '';
     document.getElementById('lead').hidden = true;
