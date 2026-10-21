@@ -98,6 +98,7 @@ legend{font-family:var(--display);font-size:clamp(28px,4vw,38px);line-height:1.0
 .opt input:focus-visible+label{outline:3px solid var(--cyan);outline-offset:2px}
 .nav{display:flex;justify-content:space-between;gap:12px;margin-top:22px}
 
+.results{scroll-margin-top:84px}
 .results h2{font-size:clamp(34px,5vw,48px);line-height:1}
 .results .sum{color:var(--ink-muted);margin:8px 0 22px}
 .match{border-top:3px solid var(--rule);padding:14px 0 18px;display:grid;gap:6px}
@@ -122,6 +123,15 @@ legend{font-family:var(--display);font-size:clamp(28px,4vw,38px);line-height:1.0
 .done{display:none}
 .done.on{display:block}
 .more{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+.pre{display:inline-block;font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--blue);margin-bottom:6px}
+.locked{border-top:3px solid var(--line);padding:14px 0 16px;display:grid;gap:8px}
+.locked .bar{height:14px;border-radius:2px;background:var(--surface-alt)}
+.locked .bar.t{height:26px;width:55%;background:var(--line)}
+.locked .bar.s{width:35%}
+.locked .lk{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--ink-muted)}
+.locked svg{width:16px;height:16px;flex:none}
+.full-h{font-size:clamp(30px,4.5vw,40px);margin-top:26px}
+.sent{background:var(--ok-bg);color:var(--ink);border-left:3px solid var(--ok);padding:12px 14px;margin-top:22px}
 
 footer{border-top:1px solid var(--line);padding-block:24px 36px;margin-top:24px}
 .comp{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start}
@@ -150,7 +160,7 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px;margin-top:24px}
   <div class="narrow">
     <p class="kick">2-minute quiz · Kansas City metro</p>
     <h1>Could you get help with your down payment?</h1>
-    <p class="lead">Eight quick questions, no credit check, no Social Security number. You'll see which programs may fit, and why.</p>
+    <p class="lead">Eight quick questions. No credit check, no Social Security number. You'll get a preliminary result right away.</p>
     <p class="co" id="co"></p>
   </div>
 </div>
@@ -264,41 +274,48 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px;margin-top:24px}
     </form>
 
     <section class="results" id="results" hidden aria-live="polite">
-      <h2>Programs worth a look</h2>
+      <span class="pre" id="pre">Preliminary result</span>
+      <h2 id="headline"></h2>
       <p class="sum" id="sum"></p>
-      <div id="matches"></div>
+      <div id="notes"></div>
+      <div id="preview"></div>
+      <div id="locked"></div>
 
       <div class="callout" id="lead">
-        <div id="formWrap">
-          <h3>Want Jason to double-check this?</h3>
-          <p>He'll look at your real numbers, confirm which programs you qualify for, and tell you what it means for your payment. No cost and no pressure.</p>
-          <form class="form" id="leadForm" novalidate>
-            <div class="row">
-              <label class="f">First and last name<input type="text" name="name" autocomplete="name" required></label>
-              <label class="f">Phone<input type="tel" name="phone" autocomplete="tel" required></label>
-            </div>
-            <div class="row">
-              <label class="f">Email<input type="email" name="email" autocomplete="email" required></label>
-              <label class="f">When do you hope to buy?
-                <select name="timeline" required>
-                  <option value="">Choose one</option>
-                  <option>In the next 3 months</option>
-                  <option>3 to 6 months</option>
-                  <option>6 to 12 months</option>
-                  <option>More than a year out</option>
-                  <option>Just exploring</option>
-                </select>
-              </label>
-            </div>
-            <label class="f">Working with a real estate agent? (optional)<input type="text" name="agent" placeholder="Agent's name"></label>
-            <label class="consent"><input type="checkbox" name="consent" required><span>I agree that Jason Robinson of Prosperity Home Mortgage may contact me by phone, text or email about my home financing, including by automated means. Consent isn't a condition of any purchase. Message and data rates may apply. Reply STOP to opt out of texts.</span></label>
-            <p class="err" id="err" role="alert"></p>
-            <div><button type="submit" class="btn cyan" id="send">Send my results to Jason</button></div>
-          </form>
-        </div>
-        <div class="done" id="done">
-          <h3>Got it. Thanks!</h3>
-          <p>Jason will reach out within one business day. Want to talk sooner? Call or text <a href="tel:+19136877247" style="color:#fff">(913) 687-7247</a>.</p>
+        <h3 id="gateH">Confirm your results and see the full list</h3>
+        <p id="gateP">Enter your info to unlock your complete list. Jason will personally review your answers and confirm which programs you actually qualify for. No cost and no pressure.</p>
+        <form class="form" id="leadForm" novalidate>
+          <div class="row">
+            <label class="f">First and last name<input type="text" name="name" autocomplete="name" required></label>
+            <label class="f">Phone<input type="tel" name="phone" autocomplete="tel" required></label>
+          </div>
+          <div class="row">
+            <label class="f">Email<input type="email" name="email" autocomplete="email" required></label>
+            <label class="f">When do you hope to buy?
+              <select name="timeline" required>
+                <option value="">Choose one</option>
+                <option>In the next 3 months</option>
+                <option>3 to 6 months</option>
+                <option>6 to 12 months</option>
+                <option>More than a year out</option>
+                <option>Just exploring</option>
+              </select>
+            </label>
+          </div>
+          <label class="f">Working with a real estate agent? (optional)<input type="text" name="agent" placeholder="Agent's name"></label>
+          <label class="consent"><input type="checkbox" name="consent" required><span>I agree that Jason Robinson of Prosperity Home Mortgage may contact me by phone, text or email about my home financing, including by automated means. Consent isn't a condition of any purchase. Message and data rates may apply. Reply STOP to opt out of texts.</span></label>
+          <p class="err" id="err" role="alert"></p>
+          <div><button type="submit" class="btn cyan" id="send">Show my full results</button></div>
+        </form>
+      </div>
+
+      <div id="full" hidden>
+        <p class="sent" id="sent"></p>
+        <h2 class="full-h">Your complete list</h2>
+        <div id="allMatches"></div>
+        <div class="callout">
+          <h3>What happens next</h3>
+          <p>Jason will reach out within one business day to confirm these with your real numbers. Want to talk sooner? Call or text <a href="tel:+19136877247" style="color:#fff">(913) 687-7247</a>.</p>
         </div>
       </div>
 
@@ -327,9 +344,7 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px;margin-top:24px}
   'use strict';
 
   // Lead capture endpoint: paste the Google Apps Script web app URL here.
-  // Leave blank to fall back to a pre-filled email to Jason.
   var LEAD_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwGx-wmc0WpEEosf5CQOEUWkctowCNvC6NQdNrAGaKD-zQJWjzx1YebK5KhqqgRIuz_/exec';
-  var JASON_EMAIL = 'Jason.Robinson@phmloans.com';
 
   var params = new URLSearchParams(location.search);
   var src = { agent: params.get('agent') || '', src: params.get('src') || params.get('utm_source') || '', listing: params.get('listing') || '' };
@@ -454,18 +469,45 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px;margin-top:24px}
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 
   var lastResult = null;
+  var LOCK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+  function card(m){
+    var tag = m.maybe ? '<span class="tag maybe">' + esc(m.maybe) + '</span>' : (m.strong ? '<span class="tag">Looks like a fit</span>' : '<span class="tag maybe">Worth checking</span>');
+    return '<div class="match">' + tag + '<h3>' + esc(m.name) + '</h3><p class="amt">' + esc(m.amt) + '</p><ul>' + m.why.map(function(w){ return '<li>' + esc(w) + '</li>'; }).join('') + '</ul></div>';
+  }
   function render(res){
     lastResult = res;
-    var sum = document.getElementById('sum');
-    sum.textContent = res.list.length
-      ? 'Based on your answers, ' + res.list.length + (res.list.length === 1 ? ' option looks' : ' options look') + ' worth exploring. This isn’t an approval. It’s a starting point for a real conversation.'
+    var n = res.list.length;
+    document.getElementById('pre').hidden = false;
+    document.getElementById('headline').textContent = n
+      ? 'You may qualify for ' + n + (n === 1 ? ' program' : ' programs')
+      : 'Let’s take a closer look';
+    document.getElementById('sum').textContent = n
+      ? 'Here’s your top match. ' + (n > 1 ? 'Enter your info below to confirm your results and unlock the other ' + (n-1) + '. ' : '') + 'This isn’t an approval. It’s a starting point for a real conversation.'
       : 'Nothing jumps out from these answers alone, but that doesn’t mean you’re out of options. Jason can look at the details a quiz can’t.';
-    var html = res.notes.map(function(n){ return '<p class="note">' + esc(n) + '</p>'; }).join('');
-    html += res.list.map(function(m){
-      var tag = m.maybe ? '<span class="tag maybe">' + esc(m.maybe) + '</span>' : (m.strong ? '<span class="tag">Looks like a fit</span>' : '<span class="tag maybe">Worth checking</span>');
-      return '<div class="match">' + tag + '<h3>' + esc(m.name) + '</h3><p class="amt">' + esc(m.amt) + '</p><ul>' + m.why.map(function(w){ return '<li>' + esc(w) + '</li>'; }).join('') + '</ul></div>';
-    }).join('');
-    document.getElementById('matches').innerHTML = html;
+    document.getElementById('notes').innerHTML = res.notes.map(function(x){ return '<p class="note">' + esc(x) + '</p>'; }).join('');
+    document.getElementById('preview').innerHTML = n ? card(res.list[0]) : '';
+    var lk = '';
+    for(var i = 1; i < n; i++){
+      lk += '<div class="locked" aria-label="Locked result"><div class="lk">' + LOCK_SVG + 'Match ' + (i+1) + ' of ' + n + '</div><div class="bar t"></div><div class="bar"></div><div class="bar s"></div></div>';
+    }
+    document.getElementById('locked').innerHTML = lk;
+    document.getElementById('gateH').textContent = n > 1 ? 'Confirm your results and see the full list' : 'Confirm your results';
+    document.getElementById('lead').hidden = false;
+    document.getElementById('full').hidden = true;
+    track('quiz_preview', {matches:n});
+  }
+  function unlock(first){
+    var res = lastResult || {list:[], notes:[]};
+    document.getElementById('pre').hidden = true;
+    document.getElementById('headline').textContent = res.list.length ? 'Your results are confirmed' : 'Thanks, you’re all set';
+    document.getElementById('sum').textContent = 'Every program that looks worth exploring, based on your answers.';
+    document.getElementById('preview').innerHTML = '';
+    document.getElementById('locked').innerHTML = '';
+    document.getElementById('lead').hidden = true;
+    document.getElementById('allMatches').innerHTML = res.list.map(card).join('');
+    document.getElementById('sent').textContent = 'Got it, ' + (first || 'thanks') + '! Jason has your answers and results.';
+    document.getElementById('full').hidden = false;
+    document.getElementById('results').scrollIntoView({behavior:'smooth'});
   }
 
   // ---------- lead form ----------
@@ -478,6 +520,11 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px;margin-top:24px}
     price:{1:'Under $250k',2:'$250k-$400k',3:'$400k-$650k',4:'$650k-$900k',5:'Over $900k'},
     save:{0:'Little/none',1:'1-3%',2:'3-10%',3:'10%+'}
   };
+  var QUESTIONS = [
+    ['state','Where are you looking to buy?'], ['ksArea','Which part of Kansas?'], ['first','First-time buyer (no home owned in 3 years)?'],
+    ['vet','Served in the military?'], ['hh','Household size'], ['inc','Total household income'],
+    ['credit','Estimated credit score'], ['price','Price range'], ['save','Saved toward buying']
+  ];
   function readable(){
     var o = {};
     Object.keys(labels).forEach(function(k){ o[k] = (labels[k][answers[k]] !== undefined ? labels[k][answers[k]] : answers[k]) || '-'; });
@@ -492,29 +539,30 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px;margin-top:24px}
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)){ err.textContent = 'That email doesn’t look quite right.'; return; }
     if(!d.consent){ err.textContent = 'Please check the box so Jason can reach out.'; return; }
     var r = readable();
+    var res = lastResult || {list:[], notes:[]};
+    var qa = QUESTIONS.filter(function(q){ return answers[q[0]]; }).map(function(q){ return {q:q[1], a:r[q[0]]}; });
     var payload = {
       funnel:'DPA quiz', submitted:new Date().toISOString(), name:d.name, phone:d.phone, email:d.email, timeline:d.timeline,
       agent:d.agent || '', referral_agent:src.agent, source:src.src, listing:src.listing,
       state:r.state, ks_area:r.ksArea, first_time:r.first, veteran:r.vet, household:r.hh, income:r.inc, credit:r.credit, price:r.price, savings:r.save,
-      matches:(lastResult ? lastResult.list.map(function(m){ return m.name; }).join('; ') : ''), consent:'Yes', page:location.href
+      matches:res.list.map(function(m){ return m.name; }).join('; '), consent:'Yes', page:location.href,
+      answers_detail:qa,
+      results_detail:res.list.map(function(m){ return {name:m.name, amount:m.amt, status: m.maybe || (m.strong ? 'Looks like a fit' : 'Worth checking'), why:m.why}; }),
+      notes_detail:res.notes,
+      send_copy:false
     };
-    if(LEAD_ENDPOINT){
-      send.disabled = true; send.textContent = 'Sending…';
-      fetch(LEAD_ENDPOINT, {method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(payload)})
-        .then(done).catch(function(){ send.disabled = false; send.textContent = 'Send my results to Jason'; err.textContent = 'Something went wrong. Please call or text (913) 687-7247.'; });
-    } else {
-      var body = Object.keys(payload).map(function(k){ return k.replace(/_/g,' ') + ': ' + payload[k]; }).join('\n');
-      location.href = 'mailto:' + JASON_EMAIL + '?subject=' + encodeURIComponent('Down payment quiz results: ' + d.name) + '&body=' + encodeURIComponent(body);
-      done();
-    }
+    send.disabled = true; send.textContent = 'Confirming…';
+    fetch(LEAD_ENDPOINT, {method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(payload)})
+      .then(function(){ track('lead_submit'); unlock(d.name.split(' ')[0]); })
+      .catch(function(){ send.disabled = false; send.textContent = 'Show my full results'; err.textContent = 'Something went wrong. Please call or text (913) 687-7247.'; });
   });
-  function done(){ document.getElementById('formWrap').hidden = true; document.getElementById('done').classList.add('on'); track('lead_submit'); }
 
   document.getElementById('redo').addEventListener('click', function(){
-    form.reset(); idx = 0; form.hidden = false; document.getElementById('results').hidden = true; show(); window.scrollTo({top:0});
+    form.reset(); idx = 0; form.hidden = false; document.getElementById('results').hidden = true;
+    send.disabled = false; send.textContent = 'Show my full results'; show(); window.scrollTo({top:0});
   });
 
-  function track(ev){ try{ if(window.gtag) window.gtag('event', ev, {funnel:'dpa_quiz'}); }catch(e){} }
+  function track(ev, extra){ try{ var o = {funnel:'dpa_quiz'}; if(extra) for(var k in extra) o[k] = extra[k]; if(window.gtag) window.gtag('event', ev, o); }catch(e){} }
 
   show();
 })();
