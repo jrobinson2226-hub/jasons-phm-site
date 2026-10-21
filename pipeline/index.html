@@ -502,6 +502,12 @@ function msInfo(deal,m){
   }
   return {done:!!st.done,doneAt:st.doneAt||null,owner:st.owner||roleUid(m.r),due,skipped:!!(m.piw&&deal.piw)};
 }
+// A same-day retry ("second attempt today") is never due sooner than 2 hours after the last logged contact.
+function sameDayDue(deal,t){
+  if(!t.due||!deal.lastTouchAt||t.kind==='manual'||!(t.sameDay||/attempt today/i.test(t.title||'')))return t.due;
+  const floor=quietShift(new Date(new Date(deal.lastTouchAt).getTime()+2*3600000));
+  return floor>new Date(t.due)?floor.toISOString():t.due;
+}
 function openItemsFor(deal){
   const items=[];
   if(deal.stage==='prequal'&&deal.pqInactive)return items;
@@ -511,7 +517,7 @@ function openItemsFor(deal){
   const nextCad={};
   const isCad=t=>t.kind!=='manual';
   for(const t of deal.tasks||[])if(!t.done&&isCad(t)&&t.due){const k=t.stage||deal.stage;if(!nextCad[k]||t.due<nextCad[k].due)nextCad[k]=t;}
-  for(const t of deal.tasks||[])if(!t.done&&!(isCad(t)&&nextCad[t.stage||deal.stage]!==t)&&!(t.kind==='cadence'&&t.stage==='realdeal'&&closeEnd&&new Date(t.due).getTime()>closeEnd))items.push({type:'task',deal,task:t,id:t.id,title:t.title,due:t.due,owner:t.owner});
+  for(const t of deal.tasks||[])if(!t.done&&!(isCad(t)&&nextCad[t.stage||deal.stage]!==t)&&!(t.kind==='cadence'&&t.stage==='realdeal'&&closeEnd&&new Date(t.due).getTime()>closeEnd))items.push({type:'task',deal,task:t,id:t.id,title:t.title,due:sameDayDue(deal,t),owner:t.owner});
   if(MS_STAGES.includes(deal.stage)||deal.stage==='closed')for(const m of MILESTONES){
     if(deal.stage==='closed'?!m.post:m.g!==deal.stage)continue;const i=msInfo(deal,m);
     if(i.done||i.skipped||!i.due)continue;
@@ -552,7 +558,7 @@ const SLIDE_STAGES=['lead','opp','prequal','preapproval','realdeal','nurture'];
 function slideCadence(tasks,deal,touchIso){
   const stage=deal.stage;
   if(!SLIDE_STAGES.includes(stage))return tasks;
-  const cad=tasks.filter(t=>t.kind==='cadence'&&t.stage===stage&&t.due);
+  const cad=tasks.filter(t=>t.kind!=='manual'&&(t.stage||stage)===stage&&t.due);
   const open=cad.filter(t=>!t.done).sort((a,b)=>a.due<b.due?-1:1);
   if(!open.length)return tasks;
   const first=new Date(open[0].due);
