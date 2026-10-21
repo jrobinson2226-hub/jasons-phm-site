@@ -282,7 +282,7 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px;margin-top:24px}
       <div id="locked"></div>
 
       <div class="callout" id="lead">
-        <h3 id="gateH">Confirm your results and see the full list</h3>
+        <h3 id="gateH">See your full list</h3>
         <p id="gateP">Enter your info to unlock your complete list. Jason will personally review your answers and confirm which programs you actually qualify for. No cost and no pressure.</p>
         <form class="form" id="leadForm" novalidate>
           <div class="row">
@@ -311,8 +311,8 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px;margin-top:24px}
 
       <div id="full" hidden>
         <p class="sent" id="sent"></p>
-        <h2 class="full-h">Your complete list</h2>
-        <p class="sum">Jason will personally review your answers, confirm which of these you qualify for, and reach out within one business day. Think of this list as a starting point, not an approval.</p>
+        <h2 class="full-h">Your preliminary results</h2>
+        <p class="sum">Jason will personally review your answers, confirm which of these you qualify for, and reach out within one business day. These results are preliminary, based only on your quiz answers, and are not an approval.</p>
         <div id="allMatches"></div>
         <div class="callout">
           <h3>What happens next</h3>
@@ -483,7 +483,7 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px;margin-top:24px}
       ? 'You may qualify for ' + n + (n === 1 ? ' program' : ' programs')
       : 'Let’s take a closer look';
     document.getElementById('sum').textContent = n
-      ? 'Here’s your top match. ' + (n > 1 ? 'Enter your info below to confirm your results and unlock the other ' + (n-1) + '. ' : '') + 'This isn’t an approval. It’s a starting point for a real conversation.'
+      ? 'Here’s your top match. ' + (n > 1 ? 'Enter your info below to unlock the other ' + (n-1) + '. ' : '') + 'This isn’t an approval. It’s a starting point for a real conversation.'
       : 'Nothing jumps out from these answers alone, but that doesn’t mean you’re out of options. Jason can look at the details a quiz can’t.';
     document.getElementById('notes').innerHTML = res.notes.map(function(x){ return '<p class="note">' + esc(x) + '</p>'; }).join('');
     document.getElementById('preview').innerHTML = n ? card(res.list[0]) : '';
@@ -492,15 +492,15 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px;margin-top:24px}
       lk += '<div class="locked" aria-label="Locked result"><div class="lk">' + LOCK_SVG + 'Match ' + (i+1) + ' of ' + n + '</div><div class="bar t"></div><div class="bar"></div><div class="bar s"></div></div>';
     }
     document.getElementById('locked').innerHTML = lk;
-    document.getElementById('gateH').textContent = n > 1 ? 'Confirm your results and see the full list' : 'Confirm your results';
+    document.getElementById('gateH').textContent = n > 1 ? 'See your full list' : 'Get your results reviewed';
     document.getElementById('lead').hidden = false;
     document.getElementById('full').hidden = true;
     track('quiz_preview', {matches:n});
   }
   function unlock(first){
     var res = lastResult || {list:[], notes:[]};
-    document.getElementById('pre').hidden = true;
-    document.getElementById('headline').textContent = res.list.length ? 'Your results are confirmed' : 'Thanks, you’re all set';
+    document.getElementById('pre').hidden = false;
+    document.getElementById('headline').textContent = res.list.length ? 'Here’s your full list' : 'Thanks, you’re all set';
     document.getElementById('sum').textContent = '';
     document.getElementById('preview').innerHTML = '';
     document.getElementById('locked').innerHTML = '';
@@ -552,7 +552,7 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px;margin-top:24px}
       notes_detail:res.notes,
       send_copy:false
     };
-    send.disabled = true; send.textContent = 'Confirming…';
+    send.disabled = true; send.textContent = 'Sending…';
     fetch(LEAD_ENDPOINT, {method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(payload)})
       .then(function(){ track('lead_submit'); unlock(d.name.split(' ')[0]); })
       .catch(function(){ send.disabled = false; send.textContent = 'Show my full results'; err.textContent = 'Something went wrong. Please call or text (913) 687-7247.'; });
