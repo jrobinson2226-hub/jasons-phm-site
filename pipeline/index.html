@@ -93,6 +93,7 @@ button{cursor:pointer}
 .chip{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;padding:2px 7px;border-radius:3px;background:var(--panel-2);color:var(--heading)}
 .chip.rd{background:var(--accent);color:var(--accent-ink)}
 .chip.ms{background:transparent;border:1px solid var(--line);color:var(--muted)}
+.chip.stale{background:var(--today-bg);color:var(--today)}
 .empty{background:var(--panel);border:1px dashed var(--line);border-radius:4px;padding:28px;text-align:center;color:var(--muted)}
 .empty b{display:block;color:var(--heading);font:400 24px/1.1 var(--display);letter-spacing:.4px;margin-bottom:6px}
 .addline{display:grid;grid-template-columns:2fr 1.3fr 1.3fr 1fr auto;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:10px;margin-bottom:22px;max-width:920px}
@@ -457,7 +458,14 @@ function callOrText(p){
 function telLink(p,cls){const href=telHref(p);if(!href)return h('span',{text:p||''});return h('a',{class:'tel'+(cls?' '+cls:''),href,title:'Call or text '+fmtPhone(p),onclick:e=>{e.stopPropagation();if(isPhone()){e.preventDefault();callOrText(p);}},text:fmtPhone(p)});}
 function fmtPhone(p){const d=String(p||'').replace(/\D/g,'').replace(/^1(?=\d{10}$)/,'');return d.length===10?`(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`:(p||'');}
 function atNine(base,days){const d=new Date(base);d.setDate(d.getDate()+days);d.setHours(9,0,0,0);return d;}
-function quietShift(d){const h=d.getHours();if(h>=20){d.setDate(d.getDate()+1);d.setHours(9,0,0,0);}else if(h<9){d.setHours(9,0,0,0);}return d;}
+// Quiet hours: weeknights 8 PM to 9 AM, and the weekend (Friday 8 PM to Monday 9 AM).
+// Automatic follow-ups never land in quiet hours; a time you or Suzanne pick by hand is kept as is.
+function quietShift(d){const h=d.getHours();if(h>=20){d.setDate(d.getDate()+1);d.setHours(9,0,0,0);}else if(h<9){d.setHours(9,0,0,0);}
+  const w=d.getDay();if(w===6||w===0){d.setDate(d.getDate()+(w===6?2:1));d.setHours(9,0,0,0);}return d;}
+// Reminders ahead of a deadline move earlier instead (a weekend reminder lands Friday 9 AM)
+function quietBack(d){const w=d.getDay();if(w===6||w===0){d.setDate(d.getDate()-(w===6?1:2));d.setHours(9,0,0,0);}return quietShift(d);}
+const quietIso=iso=>iso?quietShift(new Date(iso)).toISOString():iso;
+const nextOpen=(days)=>quietShift(atNine(new Date(),days));
 function parseDay(s){if(!s)return null;const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);}
 function dayStr(d){const z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;}
 function toLocalInput(iso){if(!iso)return '';const d=new Date(iso);const z=n=>String(n).padStart(2,'0');return `${dayStr(d)}T${z(d.getHours())}:${z(d.getMinutes())}`;}
@@ -517,13 +525,29 @@ function openItemsFor(deal){
   const nextCad={};
   const isCad=t=>t.kind!=='manual';
   for(const t of deal.tasks||[])if(!t.done&&isCad(t)&&t.due){const k=t.stage||deal.stage;if(!nextCad[k]||t.due<nextCad[k].due)nextCad[k]=t;}
-  for(const t of deal.tasks||[])if(!t.done&&!(isCad(t)&&nextCad[t.stage||deal.stage]!==t)&&!(t.kind==='cadence'&&t.stage==='realdeal'&&closeEnd&&new Date(t.due).getTime()>closeEnd))items.push({type:'task',deal,task:t,id:t.id,title:t.title,due:sameDayDue(deal,t),owner:t.owner});
+  for(const t of deal.tasks||[])if(!t.done&&!(isCad(t)&&nextCad[t.stage||deal.stage]!==t)&&!(t.kind==='cadence'&&t.stage==='realdeal'&&closeEnd&&new Date(t.due).getTime()>closeEnd)){
+    const due=sameDayDue(deal,t);items.push({type:'task',deal,task:t,id:t.id,title:t.title,due:t.kind==='manual'?due:quietIso(due),owner:t.owner});}
   if(MS_STAGES.includes(deal.stage)||deal.stage==='closed')for(const m of MILESTONES){
     if(deal.stage==='closed'?!m.post:m.g!==deal.stage)continue;const i=msInfo(deal,m);
     if(i.done||i.skipped||!i.due)continue;
-    items.push({type:'ms',deal,ms:m,id:m.k,title:m.l,due:i.due,owner:i.owner});
+    const before=m.field||(m.k2!=null&&m.k2<0);
+    items.push({type:'ms',deal,ms:m,id:m.k,title:m.l,due:(before?quietBack:quietShift)(new Date(i.due)).toISOString(),owner:i.owner});
   }
+  const stale=staleItem(deal,items);if(stale)items.push(stale);
   return items;
+}
+// Safety net: an active file with nothing scheduled comes back to the follow-up list
+// once it goes this many days without a logged contact (or since it entered its stage).
+const STALE_DAYS={lead:2,opp:7,prequal:5,preapproval:14,realdeal:3};
+function staleItem(deal,items){
+  const lim=STALE_DAYS[deal.stage];
+  if(!lim||items.some(i=>i.due))return null;
+  const last=Math.max(...[deal.lastTouchAt,deal.stageSince,deal.createdAt].filter(Boolean).map(x=>new Date(x).getTime()).filter(isFinite));
+  if(!isFinite(last))return null;
+  const at=new Date(last+lim*864e5);if(at>new Date())return null;
+  const days=Math.floor((Date.now()-last)/864e5);
+  return {type:'stale',deal,id:'stale',title:`No contact in ${days} day${days===1?'':'s'} and nothing scheduled: reach out`,
+    due:quietShift(at).toISOString(),owner:deal.stage==='prequal'?partnerId():S.ownerId};
 }
 function allItems(){
   const items=[];for(const d of allDeals())items.push(...openItemsFor(d));
@@ -546,7 +570,7 @@ function cadenceTasks(stage,from,pace){
   const list=stage==='preapproval'?(pace&&PACE[pace]?PACE[pace].days:[]).map(d=>({d,t:'Check in with borrower and/or agent'})):stage==='prequal'?(pace==='docs'?CADENCE.prequal:pace==='uw'?PQ_UW_CADENCE:[]):(CADENCE[stage]||[]);
   return list.map(c=>{
     let d=c.min!=null?new Date(base.getTime()+c.min*60000):atNine(base,c.d);
-    if(c.quiet)d=quietShift(d);
+    d=quietShift(d);
     return {id:uid(),title:c.t,due:d.toISOString(),owner:roleUid(c.r),done:false,kind:'cadence',stage,from:base.toISOString()};
   });
 }
@@ -689,7 +713,7 @@ function genPath(t){return `lanes/${t._lane}/tasks/${t.id}`;}
 let digestTimer=null,lastDigest='';
 function scheduleDigest(){if(!S.isOwner||!S.ownerId)return;clearTimeout(digestTimer);digestTimer=setTimeout(writeDigest,3000);}
 function writeDigest(){
-  const items=allItems().filter(i=>i.owner===S.ownerId&&i.due).map(i=>({title:i.title,due:i.due,borrower:i.deal?i.deal.name:'',phone:i.deal?fmtPhone(i.deal.phone):'',stage:i.deal?stageName(i.deal.stage):'',kind:i.type==='ms'?'Status item':i.type==='gen'?'Task':'Follow-up',dealId:i.deal?i.deal.id:''}));
+  const items=allItems().filter(i=>i.owner===S.ownerId&&i.due).map(i=>({title:i.title,due:i.due,borrower:i.deal?i.deal.name:'',phone:i.deal?fmtPhone(i.deal.phone):'',stage:i.deal?stageName(i.deal.stage):'',kind:i.type==='ms'?'Status item':i.type==='gen'?'Task':i.type==='stale'?'No recent contact':'Follow-up',dealId:i.deal?i.deal.id:''}));
   const body=JSON.stringify(items);if(body===lastDigest)return;lastDigest=body;
   S.db.doc('digest/'+S.ownerId).set({owner:S.ownerId,updatedAt:nowIso(),items}).catch(e=>console.warn('digest',e));
 }
@@ -700,6 +724,7 @@ async function createGen(title,due,owner){
 }
 function completeItem(it){
   const stamp={done:true,doneAt:nowIso(),doneBy:S.me};
+  if(it.type==='stale'){openLog(it);toast('Log a contact to clear this one');return;}
   if(it.type==='task')setTask(it.deal,it.id,stamp);
   else if(it.type==='ms'&&it.id==='pace'){S.open=it.deal.id;S.log=null;render();toast('Pick High, Medium or Low to start Home Search follow-ups');return;}
   else if(it.type==='ms')setMs(it.deal,it.id,stamp);
@@ -800,12 +825,13 @@ function itemRow(it){
         deal?h('span',{class:'chip'+(deal.stage==='realdeal'?' rd':''),text:stageName(deal.stage)}):null,
         deal&&it.type!=='ms'&&nextMilestone(deal)&&nextMilestone(deal).next?h('span',{text:'Next status item: '+nextMilestone(deal).next.m.l}):null,
         it.type==='ms'?h('span',{class:'chip ms',text:'Status item'}):null,
+        it.type==='stale'?h('span',{class:'chip stale',text:'No recent contact'}):null,
         deal&&deal.phone?telLink(deal.phone):null,
         deal&&deal.phone?smsLink(deal.phone):null)),
     h('div',{class:'who'},h('span',{class:'due',text:ds==='late'?'Past due · '+fmtDue(it.due):fmtDue(it.due)}),S.who==='me'?null:nameOf(it.owner)));
 }
 function addLine(){
-  const tm=atNine(new Date(),1);
+  const tm=nextOpen(1);
   const deals=allDeals().filter(d=>d.stage!=='dead'&&d.stage!=='closed').sort((a,b)=>a.name.localeCompare(b.name));
   const f=h('form',{class:'addline'+(S.addOpen?'':' collapsed'),'aria-label':'Add a follow-up',onsubmit:async e=>{e.preventDefault();
       const fd=new FormData(f);const title=String(fd.get('title')||'').trim();if(!title)return;
@@ -960,7 +986,7 @@ function nextAfterLog(d,item){
   let tasks=clone(d.tasks||[]);
   if(item&&item.type==='task')tasks=tasks.map(t=>t.id===item.id?Object.assign(t,{done:true}):t);
   tasks=slideCadence(tasks,d,nowIso());
-  return openItemsFor(Object.assign({},d,{tasks})).filter(i=>!item||i.id!==item.id).sort(byDue)[0]||null;
+  return openItemsFor(Object.assign({},d,{tasks,lastTouchAt:nowIso()})).filter(i=>!item||i.id!==item.id).sort(byDue)[0]||null;
 }
 function logTarget(d){
   const open=openItemsFor(d).sort(byDue);
@@ -1014,8 +1040,8 @@ function logCard(d){
     if(nx&&dp.next==='optional')lines.push(h('div',{class:'note',text:`Next up: ${nx.title} · ${fmtDue(nx.due)}. Add a follow-up below to replace the cadence.`}));
     if(dp.next==='cadence'){
       if(nx)lines.push(h('div',{class:'note',text:`Cadence continues. Next up: ${nx.title} · ${fmtDue(nx.due)}. Schedule a follow-up below to replace the cadence.`}));
-      else {preT='Call';preD=toLocalInput(atNine(new Date(),2).toISOString());}
-    }else if(typeof dp.next==='object'){preT=dp.next.title;preD=dp.next.pick?'':toLocalInput(atNine(new Date(),dp.next.days||1).toISOString());}
+      else {preT='Call';preD=toLocalInput(nextOpen(2).toISOString());}
+    }else if(typeof dp.next==='object'){preT=dp.next.title;preD=dp.next.pick?'':toLocalInput(nextOpen(dp.next.days||1).toISOString());}
     {
       titleIn=h('input',{id:'lg-t-'+kp,'data-keep':'lg-t-'+kp,value:preT,placeholder:'Next follow-up (optional)','aria-label':'Next follow-up'});
       dueIn=h('input',{id:'lg-d-'+kp,'data-keep':'lg-d-'+kp,type:'datetime-local',value:preD,'aria-label':'Next follow-up date and time',required:!!(dp.next.pick)});
@@ -1103,13 +1129,13 @@ function drawerView(){
   const done=(d.tasks||[]).filter(t=>t.done).sort((a,b)=>String(b.doneAt).localeCompare(String(a.doneAt))).slice(0,8);
   const tf=h('form',{class:'addline',style:'grid-template-columns:2fr 1.4fr 1fr auto;margin:10px 0 0;border:0;padding:0',onsubmit:e=>{e.preventDefault();
       const fd=new FormData(tf);const title=String(fd.get('title')||'').trim();if(!title)return;
-      const due=fd.get('due')?new Date(fd.get('due')).toISOString():atNine(new Date(),1).toISOString();
+      const due=fd.get('due')?new Date(fd.get('due')).toISOString():nextOpen(1).toISOString();
       let tasks=clone(d.tasks||[]);const rp=tf.querySelector('[name=replace]');const replace=rp&&rp.checked;
       if(replace)tasks=tasks.filter(t=>t.done||t.kind!=='cadence');
       tasks.push({id:uid(),title,due,owner:String(fd.get('owner')),done:false,kind:'manual',stage:d.stage});
       patchDeal(d,{tasks});tf.reset();toast(replace?'Follow-up scheduled. Cadence replaced.':'Follow-up added');}},
     h('input',{name:'title',id:'dt-title','data-keep':'dt-title',placeholder:'Add a follow-up','aria-label':'Follow-up',required:true}),
-    h('input',{name:'due',id:'dt-due','data-keep':'dt-due',type:'datetime-local',value:toLocalInput(atNine(new Date(),1).toISOString()),'aria-label':'Due'}),
+    h('input',{name:'due',id:'dt-due','data-keep':'dt-due',type:'datetime-local',value:toLocalInput(nextOpen(1).toISOString()),'aria-label':'Due'}),
     h('select',{name:'owner',id:'dt-owner','data-keep':'dt-owner','aria-label':'Assigned to'},team().map(id=>h('option',{value:id,selected:id===S.me,text:nameOf(id)}))),
     h('button',{class:'btn primary',type:'submit',text:'Add'}),
     (d.tasks||[]).some(t=>!t.done&&t.kind==='cadence')?h('label',{class:'check',style:'grid-column:1/-1;font-weight:400'},h('input',{type:'checkbox',name:'replace',id:'dt-replace','data-keep':'dt-replace-'+d.id,checked:true}),'Replace the automatic cadence with this follow-up'):null);
@@ -1234,7 +1260,7 @@ const START=[
 function srcTasks(source,base){
   return (SRC_CADENCE[source]||SRC_CADENCE['Agent referral / Other']).map(c=>{
     let d=c.min!=null?new Date(base.getTime()+c.min*60000):atNine(base,c.d);
-    if(c.quiet)d=quietShift(d);
+    d=quietShift(d);
     return Object.assign({id:uid(),title:c.t,due:d.toISOString(),owner:S.ownerId||S.me,done:false,kind:'cadence',stage:'lead'},c.same?{sameDay:1}:{});
   });
 }
@@ -1331,11 +1357,21 @@ async function sendAgentUpdate(d,kind,note){
 }
 // Intro text: quiet hours before 9 AM and after 8 PM
 function firstCallTime(now){
-  const m=now.getHours()*60+now.getMinutes();
-  if(m>=540&&m<1200)return {due:new Date(now.getTime()+20*60000),when:'in the next 20 minutes'};
-  const d=new Date(now);if(m>=1200)d.setDate(d.getDate()+1);d.setHours(9,0,0,0);
-  return {due:d,when:m<540?'this morning at 9:00':'tomorrow morning at 9:00'};
+  const m=now.getHours()*60+now.getMinutes(),w=now.getDay();
+  if(m>=540&&m<1200&&w>0&&w<6)return {due:new Date(now.getTime()+20*60000),when:'in the next 20 minutes'};
+  const d=quietShift(new Date(now));
+  return {due:d,when:callPhrase(d,now)+' at 9:00'};
 }
+// "this morning", "tomorrow morning", "Monday morning", or a date further out
+function callPhrase(d,now){
+  const t=new Date(now);t.setDate(t.getDate()+1);
+  const tm=d.getHours()<12?'morning':d.getHours()<17?'afternoon':'evening';
+  if(sameDay(d,now))return 'this '+tm;
+  if(sameDay(d,t))return 'tomorrow '+tm;
+  if(d-now<6*864e5)return d.toLocaleDateString([], {weekday:'long'})+' '+tm;
+  return 'on '+d.toLocaleDateString([], {weekday:'long',month:'long',day:'numeric'});
+}
+function callWhen(d,now){const p=callPhrase(d,now);return (p.startsWith('on ')?p:p.replace(/ (morning|afternoon|evening)$/,''))+' at '+fmtTime(d);}
 function smsDigits(p){const d=String(p||'').replace(/\D/g,'').replace(/^1(?=\d{10}$)/,'');return d.length===10?'+1'+d:'';}
 function introText(name,agent,when){
   const lf=(name||'').trim().split(/\s+/)[0]||'there';
@@ -1358,7 +1394,16 @@ async function createLead(v){
   const stage=st.stage||'lead';
   let tasks=[];
   if(stage==='lead'){
-    if(st.k==='new'){
+    if(st.k==='new'&&v.at){
+      // They asked for a specific time: that one follow-up replaces the automatic cadence
+      tasks=[{id:uid(),title:v.atTitle||'Call (they asked for this time)',due:v.at,owner:S.ownerId||S.me,done:false,kind:'manual',stage}];
+      if(v.phone&&S.isOwner){
+        const at=new Date(v.at);
+        v._intro={text:introText(v.name,v.agent,callWhen(at,now)),when:callWhen(at,now)};
+        v._intro.sms=introSms(v.phone,v.agent,v._intro.text);
+      }
+    }
+    else if(st.k==='new'){
       tasks=srcTasks(v.source,now);
       if(v.phone&&S.isOwner){
         const fc=firstCallTime(now);
@@ -1376,7 +1421,8 @@ async function createLead(v){
     else if(st.pick&&v.when)tasks=[{id:uid(),title:st.task,due:v.when,owner:S.ownerId||S.me,done:false,kind:'manual',stage}];
   }else{
     tasks=cadenceTasks(stage,nowS);
-    if(st.k==='app')tasks.push({id:uid(),title:'Text: app link reminder',due:atNine(now,1).toISOString(),owner:S.ownerId||S.me,done:false,kind:'manual',stage});
+    if(v.at)tasks.push({id:uid(),title:v.atTitle||'Follow-up (scheduled when added)',due:v.at,owner:S.ownerId||S.me,done:false,kind:'manual',stage});
+    if(st.k==='app')tasks.push({id:uid(),title:'Text: app link reminder',due:quietShift(atNine(now,1)).toISOString(),owner:S.ownerId||S.me,done:false,kind:'manual',stage});
   }
   const notes=[];
   if(v.note)notes.push({at:nowS,by:S.me,text:v.note});
@@ -1455,7 +1501,7 @@ function modalView(){
       else if(val('m-agent')){agent={n:val('m-agent'),e:val('m-agentemail'),p:fmtPhone(val('m-agentphone')),b:'',t:''};newAgent=true;}
       const btn=f.querySelector('button[type=submit]');btn.disabled=true;btn.textContent='Adding…';
       const id=await createLead({name,phone:fmtPhone(val('m-phone')),email:val('m-email'),source:val('m-source'),start:startK,
-        when:whenV?new Date(whenV).toISOString():null,agent,newAgent,thanks:thanksAllowed&&val('m-thanks')===true,note:val('m-note')});
+        when:whenV?new Date(whenV).toISOString():null,at:!st.pick&&val('m-at')?new Date(val('m-at')).toISOString():null,atTitle:val('m-attitle'),agent,newAgent,thanks:thanksAllowed&&val('m-thanks')===true,note:val('m-note')});
       if(id){S.addAgent=null;S.log=null;if(S.added&&S.added.id===id){S.modal='added';}else{S.modal=null;S.open=id;toast(`${name} added`);}render();}else{btn.disabled=false;btn.textContent='Add borrower';}}},
     h('div',{class:'kv'},
       h('label',{class:'full'},'Borrower name',h('input',{id:'m-name','data-keep':'m-name',required:true,autocomplete:'off'})),
@@ -1470,6 +1516,9 @@ function modalView(){
       h('label',{class:'full'},'Where things stand',h('select',{id:'m-start','data-keep':'m-start',onchange:()=>render()},START.map(x=>h('option',{value:x.k,selected:x.k===startK,text:x.l})))),
       st.pick?h('label',{class:'full'},st.pick,h('input',{id:'m-when','data-keep':'m-when',type:'datetime-local',required:true})):null,
       st.hint?h('div',{class:'note full',text:st.hint}):null,
+      st.pick?null:h('label',{},'Schedule a specific follow-up (optional)',h('input',{id:'m-at','data-keep':'m-at',type:'datetime-local','aria-label':'Specific follow-up date and time'})),
+      st.pick?null:h('label',{},'What for (optional)',h('input',{id:'m-attitle','data-keep':'m-attitle',placeholder:'e.g. Call, they asked for Saturday'})),
+      st.pick?null:h('div',{class:'note full',text:startK==='new'?'If they asked for a certain day or time, pick it here. It replaces the automatic call schedule, and it shows up even on a weekend or evening because you chose it.':'Picked times show up even on a weekend or evening because you chose them.'}),
       h('label',{class:'full'},'First note (optional)',h('textarea',{id:'m-note','data-keep':'m-note'}))),
     thanksAllowed&&(sel||isNewAgent)?h('label',{class:'check thanks'},h('input',{type:'checkbox',id:'m-thanks','data-keep':'m-thanks',checked:thanksDefault}),
       'Email the agent a thank-you for the referral',h('span',{class:'note',text:agentEmail||missingEmail||isNewAgent?' (from your Gmail; agents only, never the borrower)':''})):null,
