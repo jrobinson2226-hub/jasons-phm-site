@@ -207,6 +207,7 @@ a.smsbtn{display:block;text-align:center;padding:12px;font-size:17px;text-decora
 .pills{display:flex;flex-wrap:wrap;gap:6px}
 .pill{border:1px solid var(--line);background:var(--panel-2);color:var(--ink);border-radius:999px;padding:6px 12px;font-size:14px;font-weight:600}
 .pill.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.pill.good.on{background:var(--ok);border-color:var(--ok);color:#fff}
 .pill.bad.on{background:var(--late);border-color:var(--late);color:#fff}
 .nextblock{display:grid;gap:8px;background:var(--panel-2);border-radius:3px;padding:10px}
 .outcome{font-weight:700;color:var(--heading)}
@@ -680,6 +681,7 @@ const DISPOS=[
   {k:'notready',l:'Not ready yet',next:'none',stage:'nurture',stageIf:['lead','opp','prequal','preapproval']},
   {k:'dead',l:'Not interested / hung up',next:'none',stage:'dead'},
   {k:'bad',l:'Bad number',next:'none',stage:'dead'},
+  {k:'funded',l:'Funded',next:'none',stage:'closed',only:['realdeal'],good:true},
   {k:'canceled',l:'Canceled',next:'none',stage:'dead',only:['preapproval','realdeal'],reason:true},
 ];
 const CANCEL_REASONS=['Rate','Program','Inspection','Appraisal','Credit'];
@@ -688,7 +690,7 @@ function dispoStage(d,dp){if(!dp||!dp.stage)return null;if(dp.stageIf&&!dp.stage
 function saveLog(d,item,dp,note,nextTitle,nextDue,notifyAgent,reason){
   const now=nowIso();let tasks=clone(d.tasks||[]);const patch={};
   if(item&&item.type==='task')tasks=tasks.map(t=>t.id===item.id?Object.assign(t,{done:true,doneAt:now,doneBy:S.me,disposition:dp.l}):t);
-  if(item&&item.type==='ms'&&!dp.reason)patch.milestones={[item.id]:Object.assign({},(d.milestones||{})[item.id]||{},{done:true,doneAt:now,doneBy:S.me})};
+  if(item&&item.type==='ms'&&!dp.reason&&!dp.good)patch.milestones={[item.id]:Object.assign({},(d.milestones||{})[item.id]||{},{done:true,doneAt:now,doneBy:S.me})};
   if(dp.clear)tasks=tasks.filter(t=>t.done||t.kind!=='cadence');
   const st=dispoStage(d,dp);
   if(st)Object.assign(patch,stagePatch(d,st,tasks));else patch.tasks=tasks;
@@ -696,6 +698,7 @@ function saveLog(d,item,dp,note,nextTitle,nextDue,notifyAgent,reason){
   if(!st)patch.tasks=slideCadence(patch.tasks,d,now);
   if(nextTitle&&nextDue)patch.tasks.push({id:uid(),title:nextTitle,due:nextDue,owner:(item&&item.owner)||S.me,done:false,kind:'manual',stage:st||d.stage});
   const label=dp.l+(reason?': '+reason:'');
+  if(dp.k==='funded'){const td=dayStr(new Date());patch.fundedAt=now;if(!d.closeDate||d.closeDate>td)patch.closeDate=td;}
   if(dp.reason){patch.cancelReason=reason||'';patch.canceledFrom=d.stage;patch.canceledAt=now;}
   const notes=clone(d.notes||[]);notes.push({at:now,by:S.me,text:label+(note?' - '+note:'')});patch.notes=notes.slice(-200);
   patch.lastDisposition=label;patch.lastTouchAt=now;
@@ -1010,13 +1013,14 @@ function logCard(d){
     d.phone?h('div',{class:'bigphone'},telLink(d.phone),smsHref(d.phone)?h('a',{class:'btn',href:smsHref(d.phone),text:'Text'}):null,h('button',{class:'btn',type:'button',onclick:()=>copy(fmtPhone(d.phone)),text:'Copy'})):null);
 
   const pick=k=>{S.log=Object.assign({dealId:d.id},item?{type:item.type,id:item.id}:{},{dispo:k});render();};
-  const cancelBtn=disposFor(d).some(x=>x.k==='canceled')?h('button',{class:'btn ghost',type:'button',style:'color:var(--late)',onclick:()=>pick('canceled'),text:'File canceled?'}):null;
-  if(item&&item.type==='ms'&&item.id==='pace'&&dk!=='canceled'){
+  const cancelBtn=[disposFor(d).some(x=>x.k==='funded')?h('button',{class:'btn ghost',type:'button',style:'color:var(--ok)',onclick:()=>pick('funded'),text:'Funded?'}):null,
+    disposFor(d).some(x=>x.k==='canceled')?h('button',{class:'btn ghost',type:'button',style:'color:var(--late)',onclick:()=>pick('canceled'),text:'File canceled?'}):null];
+  if(item&&item.type==='ms'&&item.id==='pace'&&dk!=='canceled'&&dk!=='funded'){
     return h('section',{class:'sec log'},head,
       h('div',{class:'note',text:'Suzanne sent the certificate, so this file is in Home Search. Pick how often to check in with the borrower and/or agent:'}),
       h('div',{class:'logrow',style:'gap:8px;flex-wrap:wrap'},Object.entries(PACE).map(([k,v])=>h('button',{class:'btn'+(k==='medium'?' primary':''),type:'button',disabled:!S.isOwner,onclick:()=>{setPace(d,k);S.log=null;S.open=null;render();},text:`${v.l} · ${v.hint.toLowerCase()}`}))),cancelBtn);
   }
-  if(item&&item.type==='ms'&&dk!=='canceled'){
+  if(item&&item.type==='ms'&&dk!=='canceled'&&dk!=='funded'){
     const mk='ms-'+d.id+'-'+item.id;
     const mNote=h('textarea',{id:'lg-mn-'+mk,'data-keep':'lg-mn-'+mk,placeholder:'Note (optional)','aria-label':'Note'});
     const mT=h('input',{id:'lg-mt-'+mk,'data-keep':'lg-mt-'+mk,placeholder:'Next follow-up (optional)','aria-label':'Next follow-up'});
@@ -1033,7 +1037,7 @@ function logCard(d){
           patchDeal(d,patch);S.log=null;S.open=null;render();toast('Marked done');},text:'Mark done'})));
   }
 
-  const pills=h('div',{class:'pills',role:'radiogroup','aria-label':'Disposition'},disposFor(d).map(x=>h('button',{type:'button',role:'radio','aria-checked':String(x.k===dk),class:'pill'+(x.k===dk?' on':'')+(x.k==='dead'||x.k==='canceled'?' bad':''),onclick:()=>pick(x.k),text:x.l})));
+  const pills=h('div',{class:'pills',role:'radiogroup','aria-label':'Disposition'},disposFor(d).map(x=>h('button',{type:'button',role:'radio','aria-checked':String(x.k===dk),class:'pill'+(x.k===dk?' on':'')+(x.k==='dead'||x.k==='canceled'?' bad':'')+(x.good?' good':''),onclick:()=>pick(x.k),text:x.l})));
   const kp=`${d.id}-${dk||'none'}`;
   const note=h('textarea',{id:'lg-note-'+d.id,'data-keep':'lg-note-'+d.id,placeholder:'What happened? (they said, next steps)','aria-label':'Notes'});
   let nextBlock=null,titleIn=null,dueIn=null,reasonIn=null;
@@ -1044,7 +1048,7 @@ function logCard(d){
       reasonIn=h('select',{id:'lg-r-'+d.id,'data-keep':'lg-r-'+d.id,'aria-label':'Why the file canceled',required:true},h('option',{value:'',text:'Pick a reason'}),CANCEL_REASONS.map(r=>h('option',{value:r,text:r})));
       lines.push(h('div',{class:'nextrow'},h('label',{},'Why the file canceled',reasonIn)));
     }
-    if(st)lines.push(h('div',{class:'outcome',text:`Moves to ${stageName(st)}`+(CADENCE[st]?`, and its follow-up cadence starts.`:'.')+(dp.reason?' Open follow-ups are cleared.':'')}));
+    if(st)lines.push(h('div',{class:'outcome',text:`Moves to ${stageName(st)}`+(CADENCE[st]?`, and its follow-up cadence starts.`:'.')+(dp.reason?' Open follow-ups are cleared.':'')+(dp.k==='funded'?(!d.closeDate||d.closeDate>dayStr(new Date())?' Close date set to today.':'')+' Open follow-ups are cleared; the listing-agent coupon email stays on Suzanne’s list for 7 days after closing.':'')}));
     let preT='',preD='';
     const nx=(!st&&(dp.next==='cadence'||dp.next==='optional'))?nextAfterLog(d,item):null;
     if(nx&&dp.next==='optional')lines.push(h('div',{class:'note',text:`Next up: ${nx.title} · ${fmtDue(nx.due)}. Add a follow-up below to replace the cadence.`}));
