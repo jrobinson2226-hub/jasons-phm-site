@@ -1343,6 +1343,7 @@ async function mailAgent(to,subject,body){
 // Close-out / status emails to the referring agent (agents only, never the borrower)
 function agentUpdateKind(fromStage,toStage,dispoKey){
   if(dispoKey==='bad')return 'bad';
+  if(dispoKey==='funded')return null;
   if(dispoKey==='canceled')return 'canceled';
   if(toStage==='dead')return 'dead';
   if(toStage==='nurture'&&fromStage!=='nurture')return 'nurture';
