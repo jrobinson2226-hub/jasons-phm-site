@@ -5,6 +5,12 @@
 // Keep it plain and short. Never show a rate without its APR and the full rate disclaimer.
 window.NEWS = [
   {
+    date: "2026-10-26",
+    title: "New: the Rate Survival Kit",
+    text: "Rates are up, but your options aren't gone. See how buydowns, our new Rate Relief+ and Rate Knockout programs, and down payment help can bring a payment down!",
+    link: { url: "rate-survival-kit.html", label: "Open the Rate Survival Kit" }
+  },
+  {
     date: "2026-10-20",
     title: "Agents: check the address before you list or write",
     text: "Type in any listing or offer address and see if the home qualifies for USDA, MHDC, Kansas or Chase programs. Then tap \"Copy link to these results\" to share it with your buyer!",
