@@ -267,6 +267,13 @@ section .note{margin-top:16px}
 .cta-band .apply{color:#00263d}
 .btn.ghost.light{color:#fff;border-color:#fff}
 
+/* hero with team photo */
+.kit-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,460px);gap:28px 44px;align-items:center;padding-block:24px 36px}
+.kit-hero .art-hero{padding-block:0!important;min-width:0}
+.kit-photo{margin:0;display:grid;gap:8px}
+.kit-photo img{width:100%;height:auto;display:block;border:4px solid rgba(255,255,255,.9)}
+.kit-photo figcaption{font-size:13px;color:#b9d3e3}
+@media (max-width:900px){.kit-hero{grid-template-columns:1fr}.kit-photo{max-width:520px}}
 /* rate survival kit */
 .jump{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
 .jump a{border:1px solid rgba(255,255,255,.55);color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:7px 12px;border-radius:3px}
@@ -350,7 +357,8 @@ sup{font-size:.7em;line-height:0}
 <article>
 
 <div class="hero">
-  <div class="wrap art-hero">
+  <div class="wrap kit-hero">
+  <div class="art-hero">
     <a class="back" href="./">&larr; Back to Jason's PHM Site</a>
     <span class="label" style="color:#9fd6ee">Rate Survival Kit · Fall 2026</span>
     <h1>Rates are up. <span class="hi">Your options aren't gone.</span></h1>
@@ -362,6 +370,11 @@ sup{font-size:.7em;line-height:0}
       <a href="#programs">Special programs</a>
       <a href="#plan">Get my plan</a>
     </nav>
+  </div>
+  <figure class="kit-photo">
+    <img src="img/jason-suzanne.jpg" alt="Jason Robinson and Suzanne Sanders, Sr. Loan Officers with Prosperity Home Mortgage" width="1000" height="563">
+    <figcaption>Jason Robinson &amp; Suzanne Sanders · Prosperity Home Mortgage</figcaption>
+  </figure>
   </div>
 </div>
 
