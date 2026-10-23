@@ -680,20 +680,25 @@ const DISPOS=[
   {k:'notready',l:'Not ready yet',next:'none',stage:'nurture',stageIf:['lead','opp','prequal','preapproval']},
   {k:'dead',l:'Not interested / hung up',next:'none',stage:'dead'},
   {k:'bad',l:'Bad number',next:'none',stage:'dead'},
+  {k:'canceled',l:'Canceled',next:'none',stage:'dead',only:['preapproval','realdeal'],reason:true},
 ];
+const CANCEL_REASONS=['Rate','Program','Inspection','Appraisal','Credit'];
+const disposFor=d=>DISPOS.filter(x=>!x.only||x.only.includes(d.stage));
 function dispoStage(d,dp){if(!dp||!dp.stage)return null;if(dp.stageIf&&!dp.stageIf.includes(d.stage))return null;return dp.stage===d.stage?null:dp.stage;}
-function saveLog(d,item,dp,note,nextTitle,nextDue,notifyAgent){
+function saveLog(d,item,dp,note,nextTitle,nextDue,notifyAgent,reason){
   const now=nowIso();let tasks=clone(d.tasks||[]);const patch={};
   if(item&&item.type==='task')tasks=tasks.map(t=>t.id===item.id?Object.assign(t,{done:true,doneAt:now,doneBy:S.me,disposition:dp.l}):t);
-  if(item&&item.type==='ms')patch.milestones={[item.id]:Object.assign({},(d.milestones||{})[item.id]||{},{done:true,doneAt:now,doneBy:S.me})};
+  if(item&&item.type==='ms'&&!dp.reason)patch.milestones={[item.id]:Object.assign({},(d.milestones||{})[item.id]||{},{done:true,doneAt:now,doneBy:S.me})};
   if(dp.clear)tasks=tasks.filter(t=>t.done||t.kind!=='cadence');
   const st=dispoStage(d,dp);
   if(st)Object.assign(patch,stagePatch(d,st,tasks));else patch.tasks=tasks;
   if(nextTitle&&nextDue&&!st){patch.tasks=patch.tasks.filter(t=>t.done||t.kind!=='cadence');}
   if(!st)patch.tasks=slideCadence(patch.tasks,d,now);
   if(nextTitle&&nextDue)patch.tasks.push({id:uid(),title:nextTitle,due:nextDue,owner:(item&&item.owner)||S.me,done:false,kind:'manual',stage:st||d.stage});
-  const notes=clone(d.notes||[]);notes.push({at:now,by:S.me,text:dp.l+(note?' - '+note:'')});patch.notes=notes.slice(-200);
-  patch.lastDisposition=dp.l;patch.lastTouchAt=now;
+  const label=dp.l+(reason?': '+reason:'');
+  if(dp.reason){patch.cancelReason=reason||'';patch.canceledFrom=d.stage;patch.canceledAt=now;}
+  const notes=clone(d.notes||[]);notes.push({at:now,by:S.me,text:label+(note?' - '+note:'')});patch.notes=notes.slice(-200);
+  patch.lastDisposition=label;patch.lastTouchAt=now;
   patchDeal(d,patch);
   S.log=null;S.open=null;S.armDelete=null;render();
   toast(st?`Logged. Moved to ${stageName(st)}`:'Logged');
@@ -888,7 +893,7 @@ function cardView(d){
   if(MS_STAGES.includes(d.stage)){const ms=MILESTONES.filter(m=>m.g===d.stage).map(m=>msInfo(d,m)).filter(i=>!i.skipped);
     const done=ms.filter(i=>i.done).length;if(ms.length)progress=[done,ms.length];}
   return h('button',{class:'card',onclick:()=>{S.open=d.id;S.log=null;render();}},
-    h('span',{class:'nm'},d.name,d.stage==='prequal'?h('span',{class:'chip ms',style:'margin-left:6px',text:pqLabel(d)}):d.stage==='preapproval'?h('span',{class:'chip ms',style:'margin-left:6px',text:paLabel(d)}):null),
+    h('span',{class:'nm'},d.name,d.stage==='prequal'?h('span',{class:'chip ms',style:'margin-left:6px',text:pqLabel(d)}):d.stage==='preapproval'?h('span',{class:'chip ms',style:'margin-left:6px',text:paLabel(d)}):d.stage==='dead'&&d.canceledFrom?h('span',{class:'chip ms',style:'margin-left:6px',text:'Canceled'+(d.cancelReason?' · '+d.cancelReason:'')}):null),
     h('span',{class:'ln'},h('span',{text:d.agentName?'Agent: '+d.agentName:(d.source||'')}),d._lane!==S.ownerId&&S.isOwner?h('span',{text:firstName(d._lane)}):null),
     d.stage==='realdeal'&&d.closeDate?h('span',{class:'ln'},h('span',{text:'Closes '+fmtDay(d.closeDate)+(d.closeTime?' · '+d.closeTime:'')}),d.program?h('span',{text:d.program}):null):null,
     d.stage==='realdeal'&&d.apprDue&&!d.piw&&!((d.milestones||{}).apprRec||{}).done?h('span',{class:'ln'+(dueState(atNine(parseDay(d.apprDue),0).toISOString())==='late'?' late':'')},h('span',{text:'Appraisal due '+fmtDay(d.apprDue)})):null,
@@ -1004,12 +1009,14 @@ function logCard(d){
       item?h('div',{class:'logdue '+ds,text:(ds==='late'?'Past due · ':'')+fmtDue(item.due)+(item.owner&&item.owner!==S.me?' · '+nameOf(item.owner):'')}):null),
     d.phone?h('div',{class:'bigphone'},telLink(d.phone),smsHref(d.phone)?h('a',{class:'btn',href:smsHref(d.phone),text:'Text'}):null,h('button',{class:'btn',type:'button',onclick:()=>copy(fmtPhone(d.phone)),text:'Copy'})):null);
 
-  if(item&&item.type==='ms'&&item.id==='pace'){
+  const pick=k=>{S.log=Object.assign({dealId:d.id},item?{type:item.type,id:item.id}:{},{dispo:k});render();};
+  const cancelBtn=disposFor(d).some(x=>x.k==='canceled')?h('button',{class:'btn ghost',type:'button',style:'color:var(--late)',onclick:()=>pick('canceled'),text:'File canceled?'}):null;
+  if(item&&item.type==='ms'&&item.id==='pace'&&dk!=='canceled'){
     return h('section',{class:'sec log'},head,
       h('div',{class:'note',text:'Suzanne sent the certificate, so this file is in Home Search. Pick how often to check in with the borrower and/or agent:'}),
-      h('div',{class:'logrow',style:'gap:8px;flex-wrap:wrap'},Object.entries(PACE).map(([k,v])=>h('button',{class:'btn'+(k==='medium'?' primary':''),type:'button',disabled:!S.isOwner,onclick:()=>{setPace(d,k);S.log=null;S.open=null;render();},text:`${v.l} · ${v.hint.toLowerCase()}`}))));
+      h('div',{class:'logrow',style:'gap:8px;flex-wrap:wrap'},Object.entries(PACE).map(([k,v])=>h('button',{class:'btn'+(k==='medium'?' primary':''),type:'button',disabled:!S.isOwner,onclick:()=>{setPace(d,k);S.log=null;S.open=null;render();},text:`${v.l} · ${v.hint.toLowerCase()}`}))),cancelBtn);
   }
-  if(item&&item.type==='ms'){
+  if(item&&item.type==='ms'&&dk!=='canceled'){
     const mk='ms-'+d.id+'-'+item.id;
     const mNote=h('textarea',{id:'lg-mn-'+mk,'data-keep':'lg-mn-'+mk,placeholder:'Note (optional)','aria-label':'Note'});
     const mT=h('input',{id:'lg-mt-'+mk,'data-keep':'lg-mt-'+mk,placeholder:'Next follow-up (optional)','aria-label':'Next follow-up'});
@@ -1017,7 +1024,7 @@ function logCard(d){
     const mErr=h('div',{class:'err','aria-live':'polite'});
     return h('section',{class:'sec log'},head,mNote,
       h('div',{class:'nextblock'},h('div',{class:'nextrow'},h('label',{},'Next follow-up',mT),h('label',{},'When',mD))),mErr,
-      h('div',{class:'logrow'},h('span',{class:'note',text:'Status items also check off from the list below.'}),
+      h('div',{class:'logrow'},h('span',{class:'note',text:'Status items also check off from the list below.'}),cancelBtn,
         h('button',{class:'btn primary',type:'button',onclick:()=>{
           const t=mT.value.trim(),dv=mD.value;if(t&&!dv){mErr.textContent='Add a date and time for the next follow-up.';return;}
           const now=nowIso();const patch={milestones:{[item.id]:Object.assign({},(d.milestones||{})[item.id]||{},{done:true,doneAt:now,doneBy:S.me})}};
@@ -1026,15 +1033,18 @@ function logCard(d){
           patchDeal(d,patch);S.log=null;S.open=null;render();toast('Marked done');},text:'Mark done'})));
   }
 
-  const pick=k=>{S.log=Object.assign({dealId:d.id},item?{type:item.type,id:item.id}:{},{dispo:k});render();};
-  const pills=h('div',{class:'pills',role:'radiogroup','aria-label':'Disposition'},DISPOS.map(x=>h('button',{type:'button',role:'radio','aria-checked':String(x.k===dk),class:'pill'+(x.k===dk?' on':'')+(x.k==='dead'?' bad':''),onclick:()=>pick(x.k),text:x.l})));
+  const pills=h('div',{class:'pills',role:'radiogroup','aria-label':'Disposition'},disposFor(d).map(x=>h('button',{type:'button',role:'radio','aria-checked':String(x.k===dk),class:'pill'+(x.k===dk?' on':'')+(x.k==='dead'||x.k==='canceled'?' bad':''),onclick:()=>pick(x.k),text:x.l})));
   const kp=`${d.id}-${dk||'none'}`;
   const note=h('textarea',{id:'lg-note-'+d.id,'data-keep':'lg-note-'+d.id,placeholder:'What happened? (they said, next steps)','aria-label':'Notes'});
-  let nextBlock=null,titleIn=null,dueIn=null;
+  let nextBlock=null,titleIn=null,dueIn=null,reasonIn=null;
   if(dp){
     const st=dispoStage(d,dp);
     const lines=[];
-    if(st)lines.push(h('div',{class:'outcome',text:`Moves to ${stageName(st)}`+(CADENCE[st]?`, and its follow-up cadence starts.`:'.')}));
+    if(dp.reason){
+      reasonIn=h('select',{id:'lg-r-'+d.id,'data-keep':'lg-r-'+d.id,'aria-label':'Why the file canceled',required:true},h('option',{value:'',text:'Pick a reason'}),CANCEL_REASONS.map(r=>h('option',{value:r,text:r})));
+      lines.push(h('div',{class:'nextrow'},h('label',{},'Why the file canceled',reasonIn)));
+    }
+    if(st)lines.push(h('div',{class:'outcome',text:`Moves to ${stageName(st)}`+(CADENCE[st]?`, and its follow-up cadence starts.`:'.')+(dp.reason?' Open follow-ups are cleared.':'')}));
     let preT='',preD='';
     const nx=(!st&&(dp.next==='cadence'||dp.next==='optional'))?nextAfterLog(d,item):null;
     if(nx&&dp.next==='optional')lines.push(h('div',{class:'note',text:`Next up: ${nx.title} · ${fmtDue(nx.due)}. Add a follow-up below to replace the cadence.`}));
@@ -1058,8 +1068,9 @@ function logCard(d){
     const t=titleIn?titleIn.value.trim():'';const dv=dueIn?dueIn.value:'';
     if(dp.next&&dp.next.pick&&!dv){err.textContent='Pick the date and time they asked you to call back.';return;}
     if(t&&!dv){err.textContent='Add a date and time for the next follow-up.';return;}
+    if(dp.reason&&!(reasonIn&&reasonIn.value)){err.textContent='Pick why the file canceled.';return;}
     const nb=document.getElementById('lg-agent-'+d.id);
-    saveLog(d,item,dp,note.value.trim(),t,dv?new Date(dv).toISOString():null,!!(nb&&nb.checked));
+    saveLog(d,item,dp,note.value.trim(),t,dv?new Date(dv).toISOString():null,!!(nb&&nb.checked),reasonIn?reasonIn.value:'');
   },text:dp?'Save':'Pick a disposition'});
   return h('section',{class:'sec log'},head,
     d.lastDisposition?h('div',{class:'note',text:`Last: ${d.lastDisposition}`+(d.lastTouchAt?' · '+new Date(d.lastTouchAt).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'')}):null,
@@ -1328,13 +1339,14 @@ async function mailAgent(to,subject,body){
 // Close-out / status emails to the referring agent (agents only, never the borrower)
 function agentUpdateKind(fromStage,toStage,dispoKey){
   if(dispoKey==='bad')return 'bad';
+  if(dispoKey==='canceled')return 'canceled';
   if(toStage==='dead')return 'dead';
   if(toStage==='nurture'&&fromStage!=='nurture')return 'nurture';
   if(toStage==='realdeal'&&fromStage!=='realdeal')return 'contract';
   if(toStage==='closed'&&fromStage!=='closed')return 'closed';
   return null;
 }
-function agentUpdateLabel(kind){return {bad:'bad number',dead:'not moving forward',nurture:'moved to nurture',contract:'under contract',closed:'closed'}[kind];}
+function agentUpdateLabel(kind){return {canceled:'file canceled',bad:'bad number',dead:'not moving forward',nurture:'moved to nurture',contract:'under contract',closed:'closed'}[kind];}
 async function sendAgentUpdate(d,kind,note){
   if(!S.isOwner||!d.agentEmail||!kind)return null;
   const af=(d.agentName||'').split(' ')[0]||'there';const bf=(d.name||'your client').split(/\s|&/)[0];
@@ -1342,6 +1354,7 @@ async function sendAgentUpdate(d,kind,note){
   const msgs={
     bad:[`Quick question on ${d.name}`,`Hi ${af},\n\nI haven’t been able to reach ${d.name}. The number I have, ${fmtPhone(d.phone)||'(none on file)'}, doesn’t seem to be working. Could you double-check it for me?${extra}\n\nThanks so much!`],
     dead:[`Update on ${d.name}`,`Hi ${af},\n\nQuick update on ${d.name}: they’ve decided not to move forward right now.${extra}\n\nThank you again for thinking of me! I’d love to help with the next one.`],
+    canceled:[`Update on ${d.name}`,`Hi ${af},\n\nQuick update on ${d.name}: their loan file has been canceled and we won’t be moving forward on this one.${extra}\n\nThank you for the partnership! I’d love to help with the next one.`],
     nurture:[`Update on ${d.name}`,`Hi ${af},\n\nQuick update on ${d.name}: they’re not quite ready to move forward yet, so I’ll keep in touch with them over the next few months and let you know when the timing is right.${extra}\n\nThanks again for connecting us!`],
     contract:[`Great news on ${d.name}!`,`Hi ${af},\n\nGreat news! ${d.name} is under contract, and we’re moving full speed toward closing. I’ll keep you posted every step of the way.${extra}\n\nThanks for the partnership!`],
     closed:[`${d.name} closed!`,`Hi ${af},\n\n${d.name} has closed! Thank you so much for trusting me with ${bf}. It was a pleasure working with you.${extra}\n\nLooking forward to the next one!`],
