@@ -58,8 +58,10 @@ for em in emails:
     if not name:summary.append(f"Skipped an email with no name ({em.get('subject','')})");continue
     if re.search(r'test',name+' '+em['subject'],re.I) or d10(phone).startswith('555555'):
         summary.append(f'Skipped test submission: {name}');continue
+    kit=bool(re.search(r'Rate Survival Kit',em.get('subject','')+' '+b,re.I))
+    F='the Rate Survival Kit form' if kit else 'the DPA quiz';V='Filled out' if kit else 'Took'
     when=dt.datetime.fromisoformat(em['date'].replace('Z','+00:00')).astimezone(CT)
-    info=f"Took the DPA quiz on {when.strftime('%a %b %-d, %-I:%M %p')}. Timeline: {timeline or '-'}. Looking in: {looking or '-'}. Programs shown: {programs or '-'}."+(f" Agent field: {agent}." if agent and agent.lower() not in ('none listed','-') else '')
+    info=(f"{V} {F} on {when.strftime('%a %b %-d, %-I:%M %p')}. Timeline: {timeline or '-'}. "+(f"Interested in: {programs or '-'}." if kit else f"Looking in: {looking or '-'}. Programs shown: {programs or '-'}."))+(f" Agent field: {agent}." if agent and agent.lower() not in ('none listed','-') else '')
     matches=[(p,d) for p,d in deals if (d10(phone) and d10(d.get('phone'))==d10(phone)) or (email and (d.get('email') or '').lower()==email)]
     nowiso=iso(now)
     if not matches:
@@ -67,7 +69,7 @@ for em in emails:
         did=uid();tasks=cadence()
         deal={'id':did,'name':name,'phone':fmtp(phone),'email':email,'source':'Online','agentName':ag['n'] if ag else '','agentEmail':(ag or {}).get('e',''),'agentPhone':fmtp((ag or {}).get('p','')),
           'stage':'lead','stageSince':nowiso,'stageDates':{'lead':nowiso},'program':'','contractDate':'','closeDate':'','closeTime':'','piw':False,'milestones':{},'tasks':tasks,
-          'notes':[{'at':nowiso,'by':OWNER,'text':'Auto-added from the DPA quiz. '+info}],'lastDisposition':'','lastTouchAt':None,'lane':OWNER,
+          'notes':[{'at':nowiso,'by':OWNER,'text':f'Auto-added from {F}. '+info}],'lastDisposition':'','lastTouchAt':None,'lane':OWNER,
           'createdAt':nowiso,'createdBy':OWNER,'updatedAt':nowiso,'updatedBy':OWNER}
         path=f'lanes/{OWNER}/deals/{did}';put(path,deal);deals.append((path,deal))
         digest_add.append(dict(title=tasks[0]['title'],due=tasks[0]['due'],borrower=name,phone=fmtp(phone),stage='Lead',kind='Follow-up',dealId=did))
@@ -80,13 +82,13 @@ for em in emails:
     if st in ('nurture','dead'):
         tasks=[t for t in tasks if t.get('done')]+cadence();new=tasks[-7:-6]
         d.update({'stage':'lead','stageSince':nowiso,'stageDates':{**(d.get('stageDates') or {}),'lead':nowiso},'pqInactive':False})
-        notes.append({'at':nowiso,'by':OWNER,'text':f'Back in Lead from {st.title()}: took the DPA quiz. '+info})
-        summary.append(f'{d["name"]}: moved from {st.title()} back to Lead (took the quiz)')
+        notes.append({'at':nowiso,'by':OWNER,'text':f'Back in Lead from {st.title()}: {V.lower()} {F}. '+info})
+        summary.append(f'{d["name"]}: moved from {st.title()} back to Lead (' + ('Rate Survival Kit' if kit else 'took the quiz') + ')')
     else:
-        notes.append({'at':nowiso,'by':OWNER,'text':('Took the DPA quiz again. ' if any('DPA quiz' in n.get('text','') for n in notes) else '')+info})
-        open_q=[t for t in tasks if not t.get('done') and t.get('title','').startswith(('Took the DPA quiz','FYI: took the DPA quiz'))]
+        notes.append({'at':nowiso,'by':OWNER,'text':(f'{V} {F} again. ' if any(F[4:] in n.get('text','') for n in notes) else '')+info})
+        open_q=[t for t in tasks if not t.get('done') and t.get('title','').startswith(('Took the DPA quiz','FYI: took the DPA quiz','Rate Survival Kit lead','FYI: filled out the Rate Survival Kit'))]
         if not open_q:
-            title='Took the DPA quiz: call now' if st in ('lead','opp') else 'FYI: took the DPA quiz (already in '+{'prequal':'PreQual','preapproval':'PreApproved','realdeal':'Real Deal','closed':'Closed Loan'}.get(st,st)+')'
+            title=(('Rate Survival Kit lead: call now' if kit else 'Took the DPA quiz: call now') if st in ('lead','opp') else ('FYI: filled out the Rate Survival Kit form' if kit else 'FYI: took the DPA quiz')+' (already in '+{'prequal':'PreQual','preapproval':'PreApproved','realdeal':'Real Deal','closed':'Closed Loan'}.get(st,st)+')')
             t={'id':uid(),'title':title+(f' (timeline: {timeline})' if timeline else ''),'due':iso(quiet(now)),'owner':OWNER,'done':False,'kind':'manual','stage':st}
             tasks.append(t);new=[t]
         summary.append(f'{d["name"]}: already in pipeline ({st}); note added'+(' + follow-up' if new else ''))
