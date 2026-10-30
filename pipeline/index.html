@@ -683,11 +683,37 @@ const DISPOS=[
   {k:'bad',l:'Bad number',next:'none',stage:'dead'},
   {k:'funded',l:'Funded',next:'none',stage:'closed',only:['realdeal'],good:true},
   {k:'canceled',l:'Canceled',next:'none',stage:'dead',only:['preapproval','realdeal'],reason:true},
+  // Quiet dispositions: act like nothing happened. No contact logged (safety net and cadence don't reset),
+  // no stage move, no "Last:" change, no agent email.
+  {k:'note',l:'Add note',next:'none',quiet:true},
+  {k:'skip',l:'Skip',next:'none',quiet:true,skip:true},
 ];
 const CANCEL_REASONS=['Rate','Program','Inspection','Appraisal','Credit'];
-const disposFor=d=>DISPOS.filter(x=>!x.only||x.only.includes(d.stage));
+const disposFor=(d,item)=>DISPOS.filter(x=>(!x.only||x.only.includes(d.stage))&&(!x.skip||(item&&item.type==='task')));
 function dispoStage(d,dp){if(!dp||!dp.stage)return null;if(dp.stageIf&&!dp.stageIf.includes(d.stage))return null;return dp.stage===d.stage?null:dp.stage;}
+// Skip pushes the follow-up to the next business morning (9 AM). Later cadence steps in the same stage
+// move by the same amount so the steps stay in order.
+function skipTo(){return nextOpen(1);}
+function saveQuiet(d,item,dp,note){
+  const now=nowIso();const patch={};const notes=clone(d.notes||[]);
+  if(dp.skip&&item&&item.type==='task'){
+    const tasks=clone(d.tasks||[]);const cur=tasks.find(t=>t.id===item.id);
+    if(cur){
+      const oldDue=new Date(cur.due||now).getTime();const nd=skipTo();const delta=nd.getTime()-oldDue;
+      cur.due=nd.toISOString();
+      if(cur.kind!=='manual'&&delta>0)for(const t of tasks)if(t!==cur&&!t.done&&t.kind!=='manual'&&(t.stage||d.stage)===(cur.stage||d.stage)&&t.due&&new Date(t.due).getTime()>oldDue)
+        t.due=quietShift(new Date(new Date(t.due).getTime()+delta)).toISOString();
+      patch.tasks=tasks;
+      notes.push({at:now,by:S.me,text:`Skipped: ${cur.title}. Moved to ${fmtDue(cur.due)}`+(note?' - '+note:'')});
+    }
+  }else if(note){notes.push({at:now,by:S.me,text:'Note - '+note});}
+  patch.notes=notes.slice(-200);
+  patchDeal(d,patch);
+  S.log=null;S.open=null;S.armDelete=null;render();
+  toast(dp.skip?'Skipped to '+fmtDue(skipTo().toISOString()):'Note added');
+}
 function saveLog(d,item,dp,note,nextTitle,nextDue,notifyAgent,reason){
+  if(dp.quiet)return saveQuiet(d,item,dp,note);
   const now=nowIso();let tasks=clone(d.tasks||[]);const patch={};
   if(item&&item.type==='task')tasks=tasks.map(t=>t.id===item.id?Object.assign(t,{done:true,doneAt:now,doneBy:S.me,disposition:dp.l}):t);
   if(item&&item.type==='ms'&&!dp.reason&&!dp.good)patch.milestones={[item.id]:Object.assign({},(d.milestones||{})[item.id]||{},{done:true,doneAt:now,doneBy:S.me})};
@@ -1037,11 +1063,15 @@ function logCard(d){
           patchDeal(d,patch);S.log=null;S.open=null;render();toast('Marked done');},text:'Mark done'})));
   }
 
-  const pills=h('div',{class:'pills',role:'radiogroup','aria-label':'Disposition'},disposFor(d).map(x=>h('button',{type:'button',role:'radio','aria-checked':String(x.k===dk),class:'pill'+(x.k===dk?' on':'')+(x.k==='dead'||x.k==='canceled'?' bad':'')+(x.good?' good':''),onclick:()=>pick(x.k),text:x.l})));
+  const pills=h('div',{class:'pills',role:'radiogroup','aria-label':'Disposition'},disposFor(d,item).map(x=>h('button',{type:'button',role:'radio','aria-checked':String(x.k===dk),class:'pill'+(x.k===dk?' on':'')+(x.k==='dead'||x.k==='canceled'?' bad':'')+(x.good?' good':''),onclick:()=>pick(x.k),text:x.l})));
   const kp=`${d.id}-${dk||'none'}`;
   const note=h('textarea',{id:'lg-note-'+d.id,'data-keep':'lg-note-'+d.id,placeholder:'What happened? (they said, next steps)','aria-label':'Notes'});
   let nextBlock=null,titleIn=null,dueIn=null,reasonIn=null;
-  if(dp){
+  if(dp&&dp.quiet){
+    nextBlock=h('div',{class:'nextblock'},h('div',{class:'outcome',text:dp.skip
+      ?`Pushes this follow-up to ${fmtDue(skipTo().toISOString())}. Doesn’t count as a contact, and no email goes out.`
+      :'Saves the note to the file. The follow-up stays open, it doesn’t count as a contact, and no email goes out.'}));
+  }else if(dp){
     const st=dispoStage(d,dp);
     const lines=[];
     if(dp.reason){
@@ -1069,6 +1099,7 @@ function logCard(d){
   const err=h('div',{class:'err','aria-live':'polite'});
   const save=h('button',{class:'btn primary',type:'button',disabled:!dp,onclick:()=>{
     if(!dp)return;
+    if(dp.k==='note'&&!note.value.trim()){err.textContent='Type the note first.';return;}
     const t=titleIn?titleIn.value.trim():'';const dv=dueIn?dueIn.value:'';
     if(dp.next&&dp.next.pick&&!dv){err.textContent='Pick the date and time they asked you to call back.';return;}
     if(t&&!dv){err.textContent='Add a date and time for the next follow-up.';return;}
