@@ -569,8 +569,22 @@ function openItemsFor(deal){
     const before=m.field||(m.k2!=null&&m.k2<0);
     items.push({type:'ms',deal,ms:m,id:m.k,title:m.l,due:(before?quietBack:quietShift)(new Date(i.due)).toISOString(),owner:i.owner});
   }
+  const wrap=wrapItem(deal);if(wrap)items.push(wrap);
   const stale=staleItem(deal,items);if(stale)items.push(stale);
   return items;
+}
+// Exit rule: once a stage's cadence has run its last step and nothing else is scheduled, a wrap-up item
+// stays on Jason's list every day until the file is moved (or a new pace / follow-up is set).
+const WRAP={lead:'Lead wrap-up: log Never reached or Dead',opp:'Opportunity wrap-up: move to Nurture or Dead',preapproval:'12-week check: restart the pace, move to Nurture, or cancel the file'};
+function wrapItem(deal){
+  const title=WRAP[deal.stage];if(!title)return null;
+  const mine=(deal.tasks||[]).filter(t=>(t.stage||deal.stage)===deal.stage&&new Date(t.due||0)>=new Date(deal.stageSince||0));
+  if(mine.some(t=>!t.done))return null;
+  const since=new Date(deal.stageSince||0).getTime();
+  const last=mine.filter(t=>t.done&&t.kind==='cadence'&&(t.last||/^Last (call|check-in)/.test(t.title||'')||(deal.stage==='preapproval'&&new Date(t.due).getTime()-since>=77*864e5)))
+    .sort((a,b)=>(a.doneAt||'')<(b.doneAt||'')?1:-1)[0];
+  if(!last)return null;
+  return {type:'wrap',deal,id:'wrap',title,due:quietShift(new Date(last.doneAt||last.due)).toISOString(),owner:S.ownerId};
 }
 // Safety net: an active file with nothing scheduled comes back to the follow-up list
 // once it goes this many days without a logged contact (or since it entered its stage).
@@ -604,10 +618,10 @@ const PACE={
 function cadenceTasks(stage,from,pace){
   const base=from?new Date(from):new Date();
   const list=stage==='preapproval'?(pace&&PACE[pace]?PACE[pace].days:[]).map(d=>({d,t:'Check in with borrower and/or agent'})):stage==='prequal'?(pace==='docs'?CADENCE.prequal:pace==='uw'?PQ_UW_CADENCE:[]):(CADENCE[stage]||[]);
-  return list.map(c=>{
+  return list.map((c,i)=>{
     let d=c.min!=null?new Date(base.getTime()+c.min*60000):atNine(base,c.d);
     d=quietShift(d);
-    return {id:uid(),title:c.t,due:d.toISOString(),owner:roleUid(c.r),done:false,kind:'cadence',stage,from:base.toISOString()};
+    return Object.assign({id:uid(),title:c.t,due:d.toISOString(),owner:roleUid(c.r),done:false,kind:'cadence',stage,from:base.toISOString()},i===list.length-1?{last:1}:{});
   });
 }
 
@@ -798,7 +812,7 @@ function genPath(t){return `lanes/${t._lane}/tasks/${t.id}`;}
 let digestTimer=null,lastDigest='';
 function scheduleDigest(){if(!S.isOwner||!S.ownerId)return;clearTimeout(digestTimer);digestTimer=setTimeout(writeDigest,3000);}
 function writeDigest(){
-  const items=allItems().filter(i=>i.owner===S.ownerId&&i.due).map(i=>({title:i.title,due:i.due,borrower:i.deal?i.deal.name:'',phone:i.deal?fmtPhone(i.deal.phone):'',stage:i.deal?stageName(i.deal.stage):'',kind:i.type==='ms'||i.type==='pq'?'Status item':i.type==='gen'?'Task':i.type==='stale'?'No recent contact':'Follow-up',dealId:i.deal?i.deal.id:''}));
+  const items=allItems().filter(i=>i.owner===S.ownerId&&i.due).map(i=>({title:i.title,due:i.due,borrower:i.deal?i.deal.name:'',phone:i.deal?fmtPhone(i.deal.phone):'',stage:i.deal?stageName(i.deal.stage):'',kind:i.type==='ms'||i.type==='pq'||i.type==='wrap'?'Status item':i.type==='gen'?'Task':i.type==='stale'?'No recent contact':'Follow-up',dealId:i.deal?i.deal.id:''}));
   const body=JSON.stringify(items);if(body===lastDigest)return;lastDigest=body;
   S.db.doc('digest/'+S.ownerId).set({owner:S.ownerId,updatedAt:nowIso(),items}).catch(e=>console.warn('digest',e));
 }
@@ -810,6 +824,7 @@ async function createGen(title,due,owner){
 function completeItem(it){
   const stamp={done:true,doneAt:nowIso(),doneBy:S.me};
   if(it.type==='stale'){openLog(it);toast('Log a contact to clear this one');return;}
+  if(it.type==='wrap'){openLog(it);toast('Move the file to clear this one');return;}
   if(it.type==='task')setTask(it.deal,it.id,stamp);
   else if(it.type==='ms'&&it.id==='fundConf'){askFunded(it.deal);return;}
   else if(it.type==='pq'){S.open=it.deal.id;S.log=null;render();toast('Move it with the PreQual status bar');return;}
@@ -1436,10 +1451,16 @@ function contractView(){
   const k=x=>`ct-${d.id}-${x}`;
   const inp=(label,key,type,attrs)=>h('label',{},label,h('input',Object.assign({id:k(key),'data-keep':k(key),type:type||'text'},attrs||{})));
   const err=h('div',{class:'err','aria-live':'polite'});
+  const dpLine=h('div',{class:'note full','aria-live':'polite'});
+  const showDp=()=>{const g=x=>{const el=document.getElementById(k(x));return el?dAmt(el.value):0;};const pr=g('price'),la=g('loan');
+    dpLine.textContent=pr&&la&&pr>=la?`Down payment: ${dMoney(pr-la)} (${(100*(pr-la)/pr).toFixed(1)}%)`:'Down payment shows once both are filled in.';};
+  setTimeout(showDp,0);
   const emailAgent=S.isOwner&&d.agentEmail;
   const f=h('form',{onsubmit:e=>{e.preventDefault();
       const val=x=>{const el=f.querySelector('#'+CSS.escape(k(x)));return el?(el.type==='checkbox'?el.checked:el.value.trim()):'';};
       const closeDate=val('close');
+      if(!dAmt(val('price'))||!dAmt(val('loan'))){err.textContent='Add the purchase price and loan amount. The down payment and dashboard volume come from them.';return;}
+      if(dAmt(val('loan'))>dAmt(val('price'))){err.textContent='The loan amount is more than the purchase price. Check the numbers.';return;}
       if(!closeDate){err.textContent='Add the closing date. The funded confirm and closing reminders run off it.';return;}
       const now=nowIso();
       const patch=Object.assign(stagePatch(d,'realdeal',clone(d.tasks||[])),{closeDate,contractDate:dayStr(new Date())});
@@ -1457,8 +1478,9 @@ function contractView(){
       if(send)setTimeout(()=>sendAgentUpdate(d,'contract',''),600);
     }},
     h('div',{class:'kv'},
-      inp('Purchase price','price','text',{inputmode:'decimal',placeholder:'$'}),
-      inp('Loan amount','loan','text',{inputmode:'decimal',placeholder:'$'}),
+      inp('Purchase price (required)','price','text',{inputmode:'decimal',placeholder:'$',required:true,value:d.price||'',oninput:()=>showDp()}),
+      inp('Loan amount (required)','loan','text',{inputmode:'decimal',placeholder:'$',required:true,value:d.loanAmt||'',oninput:()=>showDp()}),
+      dpLine,
       inp('Closing date (required)','close','date',{required:true})),
     h('div',{class:'mgroup',text:'Already done? Check it off'}),
     h('div',{class:'walkms'},CONTRACT_CHECKS.map(([mk,l])=>h('label',{class:'check'},h('input',{type:'checkbox',id:k(mk),'data-keep':k(mk)}),l))),
@@ -1495,10 +1517,11 @@ const START=[
   {k:'nurture',l:'Long-term nurture',stage:'nurture',hint:'Monthly touches.'},
 ];
 function srcTasks(source,base){
-  return (SRC_CADENCE[source]||SRC_CADENCE['Agent referral / Other']).map(c=>{
+  const list=SRC_CADENCE[source]||SRC_CADENCE['Agent referral / Other'];
+  return list.map((c,i)=>{
     let d=c.min!=null?new Date(base.getTime()+c.min*60000):atNine(base,c.d);
     d=quietShift(d);
-    return Object.assign({id:uid(),title:c.t,due:d.toISOString(),owner:S.ownerId||S.me,done:false,kind:'cadence',stage:'lead'},c.same?{sameDay:1}:{});
+    return Object.assign({id:uid(),title:c.t,due:d.toISOString(),owner:S.ownerId||S.me,done:false,kind:'cadence',stage:'lead'},c.same?{sameDay:1}:{},i===list.length-1?{last:1}:{});
   });
 }
 function agentMatches(q){
