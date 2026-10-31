@@ -571,6 +571,8 @@ function openItemsFor(deal){
   }
   const wrap=wrapItem(deal);if(wrap)items.push(wrap);
   const stale=staleItem(deal,items);if(stale)items.push(stale);
+  // Real Deal safety net goes to both Jason and Suzanne; logging a contact clears both
+  if(stale&&deal.stage==='realdeal'&&partnerId()&&partnerId()!==stale.owner)items.push(Object.assign({},stale,{id:'stale2',owner:partnerId()}));
   return items;
 }
 // Exit rule: once a stage's cadence has run its last step and nothing else is scheduled, a wrap-up item
