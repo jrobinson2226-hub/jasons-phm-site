@@ -904,13 +904,14 @@ function teamSelect(value,onchange,keep){
 }
 
 /* ---------- dashboard (Jason only) ---------- */
-// Dates: application = first time a file reached PreQual, PreApproved or Real Deal; Real Deal = contract date
+// Dates: application = first time a file reached PreQual or PreApproved; Real Deal = contract date
 // (or the day it moved to Real Deal); funding = the day Funded was logged (or it moved to Closed).
 // Volume = loan amount entered on the file. Files stay counted after they cancel, so these are units written.
 const dAmt=v=>{const n=Number(String(v||'').replace(/[^0-9.]/g,''));return isFinite(n)&&n>0?n:0;};
 const dMoney=n=>n>=1e6?'$'+(n/1e6).toFixed(2)+'M':'$'+Math.round(n).toLocaleString('en-US');
 function dTs(v){if(!v)return null;const t=/^\d{4}-\d{2}-\d{2}$/.test(v)?parseDay(v).getTime():new Date(v).getTime();return isFinite(t)?t:null;}
-function dAppAt(d){const sd=d.stageDates||{};const ts=['prequal','preapproval','realdeal'].map(k=>dTs(sd[k])).filter(x=>x!=null);return ts.length?Math.min(...ts):null;}
+// Files added straight into Real Deal (no PreQual or PreApproved date) aren't counted as applications
+function dAppAt(d){const sd=d.stageDates||{};const ts=['prequal','preapproval'].map(k=>dTs(sd[k])).filter(x=>x!=null);return ts.length?Math.min(...ts):null;}
 function dRealAt(d){return dTs(d.contractDate)||dTs((d.stageDates||{}).realdeal);}
 function dFundAt(d){return dTs(d.fundedAt)||(d.stage==='closed'?(dTs((d.stageDates||{}).closed)||dTs(d.closeDate)):null);}
 function dLost(d){
