@@ -912,6 +912,29 @@ function dLost(d){
   const why=d.canceledFrom?'Canceled: '+(d.cancelReason||'no reason'):d.deadReason?d.deadReason:/^Bad number/.test(d.lastDisposition||'')?'Bad number':'No reason (moved by hand)';
   return {at,why};
 }
+// Top referring agents: leads = files added with that agent; fundings = funded files with that agent.
+// Names are matched ignoring case and extra spaces; files without an agent (most Online leads) are left out.
+function agentsSection(deals,ytd){
+  const all=S.agPeriod==='all',from=all?-Infinity:ytd;
+  const key=n=>String(n||'').trim().replace(/\s+/g,' ').toLowerCase();
+  const tally=(fn,withVol)=>{const m=new Map();
+    for(const d of deals){const k=key(d.agentName);if(!k)continue;const t=fn(d);if(t==null||t<from)continue;
+      const e=m.get(k)||{name:d.agentName.trim(),n:0,vol:0};e.n++;if(withVol)e.vol+=dAmt(d.loanAmt);m.set(k,e);}
+    return [...m.values()].sort((a,b)=>b.n-a.n||b.vol-a.vol||a.name.localeCompare(b.name)).slice(0,10);};
+  const leads=tally(d=>dTs(d.createdAt)||dTs(d.stageSince)),funded=tally(dFundAt,true);
+  const table=(title,rows,vol)=>h('div',{style:'min-width:0'},h('h3',{style:'margin:0 0 6px;font-size:14px',text:title}),
+    rows.length?h('div',{class:'dscroll'},h('table',{class:'dtable'},
+      h('thead',{},h('tr',{},h('th',{style:'width:36px;text-align:left',text:'#'}),h('th',{style:'text-align:left',text:'Agent'}),h('th',{text:vol?'Loans':'Leads'}),vol?h('th',{text:'Volume'}):null)),
+      h('tbody',{},rows.map((r,i)=>h('tr',{},h('td',{style:'text-align:left',text:String(i+1)}),h('td',{style:'text-align:left',text:r.name}),h('td',{text:String(r.n)}),vol?h('td',{text:r.vol?dMoney(r.vol):'—'}):null))))):
+      h('div',{class:'note',text:'None yet.'}));
+  return h('section',{class:'sec'},
+    h('div',{style:'display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;margin-bottom:10px'},
+      h('h2',{style:'margin:0',text:'Top referring agents'}),
+      h('div',{class:'seg',role:'group','aria-label':'Agent period'},[['ytd','This year'],['all','All time']].map(([k,l])=>h('button',{type:'button','aria-pressed':String((S.agPeriod||'ytd')===k),onclick:()=>{S.agPeriod=k;render();},text:l})))),
+    h('div',{style:'display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px'},
+      table('By leads received',leads,false),table('By loans funded',funded,true)),
+    h('div',{class:'note',style:'margin-top:8px',text:'Counts files with a referring agent on them. Online leads without an agent aren’t included.'}));
+}
 function dashView(){
   const deals=allDeals(),now=new Date();
   const mtd=new Date(now.getFullYear(),now.getMonth(),1).getTime(),ytd=new Date(now.getFullYear(),0,1).getTime();
@@ -949,6 +972,7 @@ function dashView(){
     h('section',{class:'sec'},h('h2',{text:'Moved this week'}),
       h('div',{class:'note',style:'margin-bottom:8px',text:'Files that entered each milestone since Monday.'}),
       h('div',{class:'dgrid',style:'grid-template-columns:repeat(auto-fit,minmax(112px,1fr))'},moved.map(m=>tile(stageName(m.k),String(m.n))))),
+    agentsSection(deals,ytd),
     h('section',{class:'sec'},h('h2',{text:'Why files were lost this year'}),
       lostRows.length?h('table',{class:'dtable'},h('tbody',{},lostRows.map(([w,n])=>h('tr',{},h('td',{text:w}),h('td',{text:String(n)}))))):h('div',{class:'note',text:'No lost files this year.'})));
 }
