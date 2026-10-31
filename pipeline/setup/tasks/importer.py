@@ -67,7 +67,7 @@ for em in emails:
     if not matches:
         ag=next((a for a in agents if agent and len(agent)>3 and agent.lower() in a.get('n','').lower()),None)
         did=uid();tasks=cadence()
-        deal={'id':did,'name':name,'phone':fmtp(phone),'email':email,'source':'Online','agentName':ag['n'] if ag else '','agentEmail':(ag or {}).get('e',''),'agentPhone':fmtp((ag or {}).get('p','')),
+        deal={'id':did,'name':name,'phone':fmtp(phone),'email':email,'source':'Online','via':('Rate Survival Kit' if kit else 'DPA quiz'),'agentName':ag['n'] if ag else '','agentEmail':(ag or {}).get('e',''),'agentPhone':fmtp((ag or {}).get('p','')),
           'stage':'lead','stageSince':nowiso,'stageDates':{'lead':nowiso},'program':'','contractDate':'','closeDate':'','closeTime':'','piw':False,'milestones':{},'tasks':tasks,
           'notes':[{'at':nowiso,'by':OWNER,'text':f'Auto-added from {F}. '+info}],'lastDisposition':'','lastTouchAt':None,'lane':OWNER,
           'createdAt':nowiso,'createdBy':OWNER,'updatedAt':nowiso,'updatedBy':OWNER}

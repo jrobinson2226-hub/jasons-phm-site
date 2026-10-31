@@ -417,7 +417,7 @@ const MILESTONES=[
   {k:'dlInsp',g:'realdeal',l:'Inspection deadline',r:'lo',field:'inspDate',before:2},
   {k:'dlAppr',g:'realdeal',l:'Appraisal contingency deadline',r:'partner',field:'apprContDate',before:2,piw:1},
   {k:'dlFin',g:'realdeal',l:'Financing contingency deadline',r:'partner',field:'finContDate',before:2},
-  {k:'dlLock',g:'realdeal',l:'Rate lock expires: extend or close before',r:'lo',field:'lockExp',before:2},
+  {k:'dlLock',g:'realdeal',l:'Rate lock expires: extend or close before',r:'lo',field:'lockExp',before:5},
   // Received checks: on the list 7 days before closing, every day until checked off
   {k:'titleRec',g:'realdeal',l:'Title received',r:'partner',k2:-7,daily:1},
   {k:'hoiRec',g:'realdeal',l:'Homeowners insurance received',r:'partner',k2:-7,daily:1},
@@ -574,6 +574,14 @@ function openItemsFor(deal){
     const mi={type:'ms',deal,ms:m,id:m.k,title:m.l,due:(before?quietBack:quietShift)(new Date(i.due)).toISOString(),owner:i.owner};items.push(mi);
     if(m.both&&partnerId()&&partnerId()!==S.ownerId)items.push(Object.assign({},mi,{owner:i.owner===S.ownerId?partnerId():S.ownerId,shared:1}));
   }
+  // Rate lock expires before the close date: on Jason's list until the lock or close date is fixed
+  if(deal.stage==='realdeal'&&deal.lockExp&&deal.closeDate&&deal.lockExp<deal.closeDate)
+    items.push({type:'stale',deal,id:'lockgap',title:`Rate lock expires ${fmtDay(deal.lockExp)}, before closing ${fmtDay(deal.closeDate)}: extend the lock`,due:quietShift(atNine(new Date(),0)).toISOString(),owner:S.ownerId});
+  // Real Deal with no logged contact in 5+ days (even with status items scheduled): both Jason and Suzanne
+  if(deal.stage==='realdeal'){const last=Math.max(...[deal.lastTouchAt,deal.stageSince].filter(Boolean).map(x=>new Date(x).getTime()).filter(isFinite));
+    if(isFinite(last)&&Date.now()-last>=5*864e5){const days=Math.floor((Date.now()-last)/864e5);
+      const it={type:'stale',deal,id:'rdquiet',title:`Real Deal: no contact logged in ${days} days. Check in with the borrower or agent`,due:quietShift(new Date(last+5*864e5)).toISOString(),owner:S.ownerId};
+      items.push(it);if(partnerId()&&partnerId()!==S.ownerId)items.push(Object.assign({},it,{owner:partnerId(),shared:1}));}}
   // Rate not locked after the review call: stays on Jason's list until it's locked or a call to lock is scheduled
   if(deal.stage==='realdeal'){const ms0=deal.milestones||{};
     if((ms0.review||{}).done&&!(ms0.lock||{}).done&&!(deal.tasks||[]).some(t=>t.lockCall&&!t.done))
@@ -682,7 +690,7 @@ const dealPath=(lane,id)=>`lanes/${lane}/deals/${id}`;
 function queue(key,fn){const p=(S.queues[key]||Promise.resolve()).then(fn,fn);S.queues[key]=p.catch(()=>{});return p;}
 function writeErr(e){
   console.warn(e);
-  if(e&&e.code==='quota_exceeded')toast('Storage is full. Delete old Dead files to make room.');
+  if(e&&e.code==='quota_exceeded')toast('Storage is full. Archive old Dead files (Pipeline, Show Nurture & Dead) to make room.');
   else if(e&&e.code==='invalid_argument')toast('That change was not allowed for your access level.');
   else toast('Could not save. Check your connection and try again.');
 }
@@ -768,9 +776,9 @@ function saveQuiet(d,item,dp,note){
       if(cur.kind!=='manual'&&delta>0)for(const t of tasks)if(t!==cur&&!t.done&&t.kind!=='manual'&&(t.stage||d.stage)===(cur.stage||d.stage)&&t.due&&new Date(t.due).getTime()>oldDue)
         t.due=quietShift(new Date(new Date(t.due).getTime()+delta)).toISOString();
       patch.tasks=tasks;
-      notes.push({at:now,by:S.me,text:`Skipped: ${cur.title}. Moved to ${fmtDue(cur.due)}`+(note?' - '+note:'')});
+      notes.push({at:now,by:S.me,internal:1,text:`Skipped: ${cur.title}. Moved to ${fmtDue(cur.due)}`+(note?' - '+note:'')});
     }
-  }else if(note){notes.push({at:now,by:S.me,text:'Note - '+note});}
+  }else if(note){notes.push({at:now,by:S.me,internal:1,text:'Note - '+note});}
   patch.notes=notes.slice(-200);
   patchDeal(d,patch);
   S.log=null;S.open=null;S.armDelete=null;render();
@@ -803,7 +811,7 @@ function saveLog(d,item,dp,note,nextTitle,nextDue,notifyAgent,reason){
   if(dp.reason&&dp.k==='dead'){patch.deadReason=reason||'';patch.deadFrom=d.stage;patch.deadAt=now;}
   else if(dp.reason){patch.cancelReason=reason||'';patch.canceledFrom=d.stage;patch.canceledAt=now;}
   if(st==='dead'&&!dp.reason&&dp.k==='bad')patch.deadAt=now;
-  const notes=clone(d.notes||[]);notes.push({at:now,by:S.me,text:label+(note?' - '+note:'')});patch.notes=notes.slice(-200);
+  const notes=clone(d.notes||[]);notes.push(Object.assign({at:now,by:S.me,text:label+(note?' - '+note:'')},['never','fellthrough','funded','canceled'].includes(dp.k)?{internal:1}:{}));patch.notes=notes.slice(-200);
   patch.lastDisposition=label;patch.lastTouchAt=now;
   patchDeal(d,patch);
   S.log=null;S.open=null;S.armDelete=null;render();
@@ -823,8 +831,26 @@ function genPath(t){return `lanes/${t._lane}/tasks/${t.id}`;}
 /* ---------- digest: Jason's open follow-ups, read each morning into his Command Center ---------- */
 let digestTimer=null,lastDigest='';
 function scheduleDigest(){if(!S.isOwner||!S.ownerId)return;clearTimeout(digestTimer);digestTimer=setTimeout(writeDigest,3000);}
+// Archive a Dead file: keep only what the dashboard needs (dates, reasons, agent, amounts) and drop notes, tasks and checklists
+const ARCHIVE_KEYS=['id','name','stage','stageSince','stageDates','source','agentName','loanAmt','price','contractDate','closeDate','fundedAt','createdAt',
+  'canceledFrom','cancelReason','canceledAt','deadReason','deadFrom','deadAt','lastDisposition','lastTouchAt','neverReached','lane'];
+async function archiveDeal(d){
+  const b={archived:true,archivedAt:nowIso(),tasks:[],notes:[],milestones:{},updatedAt:nowIso(),updatedBy:S.me};
+  for(const k of ARCHIVE_KEYS)if(d[k]!==undefined)b[k]=clone(d[k]);
+  b.via=leadSrc(d);
+  try{await S.db.doc(dealPath(d._lane,d.id)).set(b);return true;}catch(e){writeErr(e);return false;}
+}
+async function archiveOldDead(){
+  const cut=Date.now()-60*864e5;const list=allDeals().filter(d=>d.stage==='dead'&&!d.archived&&new Date(d.stageSince||0).getTime()<cut);
+  let n=0;for(const d of list)if(await archiveDeal(d))n++;
+  toast(`Archived ${n} Dead file${n===1?'':'s'}`);
+}
+function digestFor(uid){
+  return allItems().filter(i=>i.owner===uid&&i.due).map(i=>({title:i.title,due:i.due,borrower:i.deal?i.deal.name:'',phone:i.deal?fmtPhone(i.deal.phone):'',stage:i.deal?stageName(i.deal.stage):'',kind:i.type==='ms'||i.type==='pq'||i.type==='wrap'?'Status item':i.type==='gen'?'Task':i.type==='stale'?'No recent contact':'Follow-up',dealId:i.deal?i.deal.id:''}));
+}
+window.TPL_DIGEST=uid=>digestFor(uid||S.ownerId);window.TPL_TEAM=()=>({owner:S.ownerId,members:S.members.map(m=>m.id),ready:!!S.ready});
 function writeDigest(){
-  const items=allItems().filter(i=>i.owner===S.ownerId&&i.due).map(i=>({title:i.title,due:i.due,borrower:i.deal?i.deal.name:'',phone:i.deal?fmtPhone(i.deal.phone):'',stage:i.deal?stageName(i.deal.stage):'',kind:i.type==='ms'||i.type==='pq'||i.type==='wrap'?'Status item':i.type==='gen'?'Task':i.type==='stale'?'No recent contact':'Follow-up',dealId:i.deal?i.deal.id:''}));
+  const items=digestFor(S.ownerId);
   const body=JSON.stringify(items);if(body===lastDigest)return;lastDigest=body;
   S.db.doc('digest/'+S.ownerId).set({owner:S.ownerId,updatedAt:nowIso(),items}).catch(e=>console.warn('digest',e));
 }
@@ -914,6 +940,14 @@ function dTs(v){if(!v)return null;const t=/^\d{4}-\d{2}-\d{2}$/.test(v)?parseDay
 function dAppAt(d){const sd=d.stageDates||{};const ts=['prequal','preapproval'].map(k=>dTs(sd[k])).filter(x=>x!=null);return ts.length?Math.min(...ts):null;}
 function dRealAt(d){return dTs(d.contractDate)||dTs((d.stageDates||{}).realdeal);}
 function dFundAt(d){return dTs(d.fundedAt)||(d.stage==='closed'?(dTs((d.stageDates||{}).closed)||dTs(d.closeDate)):null);}
+// Lead source for the dashboard: website form (DPA quiz / Rate Survival Kit), other Online, or agent referral
+function leadSrc(d){
+  if(d.via)return d.via;
+  const first=((d.notes||[])[0]||{}).text||'';
+  if(/Rate Survival Kit/i.test(first)&&/^Auto-added/.test(first))return 'Rate Survival Kit';
+  if(/DPA quiz/i.test(first)&&/^Auto-added/.test(first))return 'DPA quiz';
+  return d.source==='Online'?'Online (other)':d.source?'Agent referral / Other':'Not set';
+}
 function dLost(d){
   if(d.stage!=='dead')return null;
   const at=dTs(d.canceledAt)||dTs(d.deadAt)||dTs((d.stageDates||{}).dead);
@@ -922,6 +956,33 @@ function dLost(d){
 }
 // Top referring agents: leads = files added with that agent; fundings = funded files with that agent.
 // Names are matched ignoring case and extra spaces; files without an agent (most Online leads) are left out.
+// Pull-through, days between steps, and leads by source (this year)
+function funnelSection(deals,ytd){
+  const lead=d=>dTs(d.createdAt)||dTs(d.stageSince);
+  const leadsY=deals.filter(d=>{const t=lead(d);return t!=null&&t>=ytd;});
+  const appsY=deals.filter(d=>{const t=dAppAt(d);return t!=null&&t>=ytd;});
+  const pct=(a,b)=>b?Math.round(100*a/b)+'%':'—';
+  const appliedOfLeads=leadsY.filter(d=>dAppAt(d)!=null).length;
+  const rdOfApps=appsY.filter(d=>dRealAt(d)!=null).length,fundOfApps=appsY.filter(d=>dFundAt(d)!=null).length;
+  const avg=(list,a,b)=>{const xs=list.map(d=>{const x=a(d),y=b(d);return x!=null&&y!=null&&y>=x?(y-x)/864e5:null;}).filter(v=>v!=null);return xs.length?Math.round(xs.reduce((s,v)=>s+v,0)/xs.length)+' days':'—';};
+  const funded=deals.filter(d=>{const t=dFundAt(d);return t!=null&&t>=ytd;});
+  const tile=(l,v,sub)=>h('div',{class:'tile'},h('div',{class:'l',text:l}),h('div',{class:'v',text:v}),sub?h('div',{class:'s',text:sub}):null);
+  const src=new Map();for(const d of leadsY){const k=leadSrc(d);const e=src.get(k)||{n:0,app:0,fund:0};e.n++;if(dAppAt(d)!=null)e.app++;if(dFundAt(d)!=null)e.fund++;src.set(k,e);}
+  const srcRows=[...src.entries()].sort((a,b)=>b[1].n-a[1].n);
+  return h('section',{class:'sec'},h('h2',{text:'Pull-through this year'}),
+    h('div',{class:'dgrid'},
+      tile('Leads that applied',pct(appliedOfLeads,leadsY.length),`${appliedOfLeads} of ${leadsY.length} leads`),
+      tile('Applications under contract',pct(rdOfApps,appsY.length),`${rdOfApps} of ${appsY.length} applications`),
+      tile('Applications funded',pct(fundOfApps,appsY.length),`${fundOfApps} of ${appsY.length} applications`),
+      tile('Lead to application',avg(leadsY,lead,dAppAt),'average'),
+      tile('Application to contract',avg(appsY,dAppAt,dRealAt),'average'),
+      tile('Contract to funded',avg(funded,dRealAt,dFundAt),'average')),
+    h('h3',{style:'margin:14px 0 6px;font-size:14px',text:'Leads by source'}),
+    srcRows.length?h('div',{class:'dscroll'},h('table',{class:'dtable'},
+      h('thead',{},h('tr',{},h('th',{text:'Source'}),h('th',{text:'Leads'}),h('th',{text:'Applied'}),h('th',{text:'Funded'}))),
+      h('tbody',{},srcRows.map(([k,e])=>h('tr',{},h('td',{text:k}),h('td',{text:String(e.n)}),h('td',{text:`${e.app} (${pct(e.app,e.n)})`}),h('td',{text:`${e.fund} (${pct(e.fund,e.n)})`})))))):h('div',{class:'note',text:'No leads yet this year.'}),
+    h('div',{class:'note',style:'margin-top:8px',text:'Applications still in process count as not yet under contract or funded, so these rates rise as files move.'}));
+}
 function agentsSection(deals,ytd){
   const all=S.agPeriod==='all',from=all?-Infinity:ytd;
   const key=n=>String(n||'').trim().replace(/\s+/g,' ').toLowerCase();
@@ -980,6 +1041,7 @@ function dashView(){
     h('section',{class:'sec'},h('h2',{text:'Moved this week'}),
       h('div',{class:'note',style:'margin-bottom:8px',text:'Files that entered each milestone since Monday.'}),
       h('div',{class:'dgrid',style:'grid-template-columns:repeat(auto-fit,minmax(112px,1fr))'},moved.map(m=>tile(stageName(m.k),String(m.n))))),
+    funnelSection(deals,ytd),
     agentsSection(deals,ytd),
     h('section',{class:'sec'},h('h2',{text:'Why files were lost this year'}),
       lostRows.length?h('table',{class:'dtable'},h('tbody',{},lostRows.map(([w,n])=>h('tr',{},h('td',{text:w}),h('td',{text:String(n)}))))):h('div',{class:'note',text:'No lost files this year.'})));
@@ -1056,7 +1118,9 @@ function boardView(){
   const rdCount=deals.filter(d=>d.stage==='realdeal').length;
   wrap.append(h('div',{class:'bar'},h('h1',{text:'Pipeline'}),
     rdCount?h('button',{class:'btn primary',onclick:startWalk,text:`Walk through Real Deals (${rdCount})`}):null,
-    h('button',{class:'btn',onclick:()=>{S.showSide=!showSide;render();},text:showSide?'Hide Nurture & Dead':'Show Nurture & Dead'})));
+    h('button',{class:'btn',onclick:()=>{S.showSide=!showSide;render();},text:showSide?'Hide Nurture & Dead':'Show Nurture & Dead'}),
+    (()=>{if(!S.isOwner||!showSide)return null;const cut=Date.now()-60*864e5;const n=deals.filter(d=>d.stage==='dead'&&!d.archived&&new Date(d.stageSince||0).getTime()<cut).length;
+      return n?h('button',{class:'btn',onclick:archiveOldDead,title:'Keeps names, dates, reasons and amounts for the dashboard; drops notes and follow-ups',text:`Archive Dead files over 60 days (${n})`}):null;})()));
   if(!deals.length){wrap.append(h('div',{class:'empty'},h('b',{text:'No borrowers yet'}),'Use Add borrower to start a file. It lands in Lead and starts the call and text cadence for its source.'));return wrap;}
   const cols=showSide?ALLSTAGES:STAGES;
   const cutoff=Date.now()-60*864e5;
@@ -1088,7 +1152,7 @@ function cardView(d){
   if(MS_STAGES.includes(d.stage)){const ms=MILESTONES.filter(m=>m.g===d.stage).map(m=>msInfo(d,m)).filter(i=>!i.skipped);
     const done=ms.filter(i=>i.done).length;if(ms.length)progress=[done,ms.length];}
   return h('button',{class:'card',onclick:()=>{S.open=d.id;S.log=null;render();}},
-    h('span',{class:'nm'},d.name,d.stage==='prequal'?h('span',{class:'chip ms',style:'margin-left:6px',text:pqLabel(d)}):d.stage==='preapproval'?h('span',{class:'chip ms',style:'margin-left:6px',text:paLabel(d)}):d.stage==='dead'&&d.canceledFrom?h('span',{class:'chip ms',style:'margin-left:6px',text:'Canceled'+(d.cancelReason?' · '+d.cancelReason:'')}):d.stage==='dead'&&d.deadReason?h('span',{class:'chip ms',style:'margin-left:6px',text:d.deadReason}):d.stage==='nurture'&&d.neverReached?h('span',{class:'chip ms',style:'margin-left:6px',text:'Never reached'}):null),
+    h('span',{class:'nm'},d.name,d.stage==='prequal'?h('span',{class:'chip ms',style:'margin-left:6px',text:pqLabel(d)}):d.stage==='preapproval'?h('span',{class:'chip ms',style:'margin-left:6px',text:paLabel(d)}):d.stage==='dead'&&d.canceledFrom?h('span',{class:'chip ms',style:'margin-left:6px',text:'Canceled'+(d.cancelReason?' · '+d.cancelReason:'')}):d.stage==='realdeal'&&d.agentName&&!d.agentEmail?h('span',{class:'chip stale',style:'margin-left:6px',text:'No agent email'}):d.stage==='dead'&&d.archived?h('span',{class:'chip ms',style:'margin-left:6px',text:'Archived'}):d.stage==='dead'&&d.deadReason?h('span',{class:'chip ms',style:'margin-left:6px',text:d.deadReason}):d.stage==='nurture'&&d.neverReached?h('span',{class:'chip ms',style:'margin-left:6px',text:'Never reached'}):null),
     h('span',{class:'ln'},h('span',{text:d.agentName?'Agent: '+d.agentName:(d.source||'')}),d._lane!==S.ownerId&&S.isOwner?h('span',{text:firstName(d._lane)}):null),
     d.stage==='realdeal'&&d.closeDate?h('span',{class:'ln'},h('span',{text:'Closes '+fmtDay(d.closeDate)+(d.closeTime?' · '+d.closeTime:'')}),d.program?h('span',{text:d.program}):null):null,
     d.stage==='realdeal'&&d.apprDue&&!d.piw&&!((d.milestones||{}).apprRec||{}).done?h('span',{class:'ln'+(dueState(atNine(parseDay(d.apprDue),0).toISOString())==='late'?' late':'')},h('span',{text:'Appraisal due '+fmtDay(d.apprDue)})):null,
@@ -1099,7 +1163,7 @@ function cardView(d){
 }
 
 /* ---------- PreQual: Docs Pending / Sent to underwriting, Inactive pause, auto-inactive after 30 days ---------- */
-function pqNote(d,text){const n=clone(d.notes||[]);n.push({at:nowIso(),by:S.me,text});return n.slice(-200);}
+function pqNote(d,text){const n=clone(d.notes||[]);n.push({at:nowIso(),by:S.me,internal:1,text});return n.slice(-200);}
 function setPqStatus(d,st){
   if((d.pqStatus||'app')===st)return;
   const now=nowIso();let tasks=clone(d.tasks||[]).filter(t=>t.done||t.kind!=='cadence');
@@ -1145,7 +1209,7 @@ function setPace(d,p){
   const now=nowIso();
   const msPace=Object.assign({},(d.milestones||{}).pace||{},{done:true,doneAt:now,doneBy:S.me});
   const tasks=clone(d.tasks||[]).filter(t=>t.done||t.kind!=='cadence').concat(cadenceTasks('preapproval',now,p));
-  const n=clone(d.notes||[]);n.push({at:now,by:S.me,text:`Check-in pace set to ${PACE[p].l} (${PACE[p].hint.toLowerCase()}).`});
+  const n=clone(d.notes||[]);n.push({at:now,by:S.me,internal:1,text:`Check-in pace set to ${PACE[p].l} (${PACE[p].hint.toLowerCase()}).`});
   patchDeal(d,{pace:p,tasks,notes:n.slice(-200),milestones:{pace:msPace}});toast(`Pace: ${PACE[p].l}`);
 }
 function paceBar(d){
@@ -1244,7 +1308,7 @@ function logCard(d){
     if(lockStep&&!mT.value)mT.value='Call borrower to lock rate';
     const notYet=item.id==='discRec'?h('button',{class:'btn',type:'button',onclick:()=>{
       const now=nowIso();const due=nextOpen(2).toISOString();const n=mNote.value.trim();
-      const notes=clone(d.notes||[]);notes.push({at:now,by:S.me,text:'Disclosures not received yet. Checking again '+fmtDue(due)+(n?' - '+n:'')});
+      const notes=clone(d.notes||[]);notes.push({at:now,by:S.me,internal:1,text:'Disclosures not received yet. Checking again '+fmtDue(due)+(n?' - '+n:'')});
       patchDeal(d,{milestones:{discRec:Object.assign({},(d.milestones||{}).discRec||{},{due})},notes:notes.slice(-200)});S.log=null;S.open=null;render();toast('Checking again '+fmtDue(due));},text:'Not yet: check in 2 days'}):null;
     return h('section',{class:'sec log'},head,mNote,
       lockStep?h('label',{class:'check',style:'margin:6px 0'},lockBox,'Rate locked'):null,
@@ -1259,7 +1323,7 @@ function logCard(d){
           if(item.id!=='lock'||locked)patch.milestones[item.id]=Object.assign({},(d.milestones||{})[item.id]||{},stamp);
           if(locked)patch.milestones.lock=Object.assign({},(d.milestones||{}).lock||{},stamp);
           if(t&&dv){const tasks=clone(d.tasks||[]);tasks.push(Object.assign({id:uid(),title:t,due:new Date(dv).toISOString(),owner:lockStep?S.ownerId:(item.owner||S.me),done:false,kind:'manual',stage:d.stage},lockStep&&!locked?{lockCall:1}:{}));patch.tasks=tasks;}
-          const n=mNote.value.trim();const notes=clone(d.notes||[]);notes.push({at:now,by:S.me,text:'Done: '+item.title+(n?' - '+n:'')});patch.notes=notes.slice(-200);
+          const n=mNote.value.trim();const notes=clone(d.notes||[]);notes.push({at:now,by:S.me,internal:1,text:'Done: '+item.title+(n?' - '+n:'')});patch.notes=notes.slice(-200);
           patchDeal(d,patch);S.log=null;S.open=null;render();toast(lockStep&&!locked?'Call to lock scheduled':'Marked done');},text:lockStep?'Save':'Mark done'})));
   }
 
@@ -1340,7 +1404,8 @@ function drawerView(){
       h('label',{},'Lead source',h('select',{id:'f-source',onchange:e=>patchDeal(d,{source:e.target.value})},
         [d.source&&!SOURCES.includes(d.source)?d.source:null,...SOURCES].filter(Boolean).map(s=>h('option',{value:s,selected:s===d.source,text:s})))),
       (()=>{const ai=h('input',{id:'f-agentName',value:d.agentName||'',placeholder:'Start typing, e.g. kat l',
-          onchange:e=>{if(!e.target.dataset.picked)patchDeal(d,{agentName:e.target.value.trim()});delete e.target.dataset.picked;}});
+          onchange:e=>{if(!e.target.dataset.picked){const a=resolveAgent(e.target.value,{e:d.agentEmail,p:d.agentPhone});
+            if(!a)patchDeal(d,{agentName:''});else{e.target.value=a.n;patchDeal(d,Object.assign({agentName:a.n},a._known?{agentEmail:a.e||d.agentEmail||'',agentPhone:fmtPhone(a.p)||d.agentPhone||''}:{}));}}delete e.target.dataset.picked;}});
         return agentSuggestBox('Referring agent',ai,a=>{ai.dataset.picked='1';patchDeal(d,{agentName:a.n,agentEmail:a.e||d.agentEmail||'',agentPhone:fmtPhone(a.p)||d.agentPhone||''});toast(`${a.n} added`);});})(),
       field('Agent phone','agentPhone','tel'),
       d.agentPhone&&telHref(d.agentPhone)?h('div',{style:'align-self:end;padding-bottom:8px'},'Call agent: ',telLink(d.agentPhone),smsHref(d.agentPhone)?[' · ',smsLink(d.agentPhone,'Text agent')]:null):null,
@@ -1419,10 +1484,11 @@ function drawerView(){
   const armed=S.armDelete===d.id;
   const foot=h('div',{class:'foot'},
     h('span',{class:'note',text:`Added ${new Date(d.createdAt).toLocaleDateString([], {month:'short',day:'numeric',year:'numeric'})}`+(S.isOwner&&d._lane!==S.ownerId?` · Shared with ${nameOf(d._lane)}`:'')}),
+    S.isOwner&&d.stage==='dead'&&!d.archived?h('button',{class:'btn',type:'button',onclick:async()=>{if(await archiveDeal(d)){S.open=null;render();toast('Archived. Dashboard history is kept.');}},text:'Archive (keeps dashboard history)'}):null,
     S.isOwner?h('button',{class:'btn danger',type:'button',onclick:async()=>{
       if(!armed){S.armDelete=d.id;render();setTimeout(()=>{if(S.armDelete===d.id){S.armDelete=null;render();}},4000);return;}
       try{await S.db.doc(dealPath(d._lane,d.id)).delete();S.open=null;S.armDelete=null;toast('Borrower deleted');}catch(e){writeErr(e);}
-    },text:armed?'Click again to delete':'Delete borrower'}):null);
+    },text:armed?'Click again to delete (removes it from the dashboard too)':'Delete borrower'}):null);
 
   return h('div',{},
     h('div',{class:'scrim',onclick:close}),
@@ -1478,6 +1544,7 @@ function walkView(){
     const patch={};
     for(const key of ['name','email','agentName','agentEmail','contractDate','closeDate','closeTime','apprDue','inspDate','apprContDate','finContDate','lockExp','program']){const v=val(key);if(v!==(d[key]||''))patch[key]=v;}
     for(const key of ['phone','agentPhone']){const v=fmtPhone(val(key));if(v!==(d[key]||''))patch[key]=v;}
+    if(patch.agentName){const a=resolveAgent(patch.agentName,{e:val('agentEmail'),p:fmtPhone(val('agentPhone'))});if(a){patch.agentName=a.n;if(a._known&&!val('agentEmail')&&a.e)patch.agentEmail=a.e;}}
     for(const key of ['price','loanAmt']){const v=fmtMoney(val(key));if(v!==(d[key]||''))patch[key]=v;}
     if(val('piw')!==!!d.piw)patch.piw=val('piw');
     if(!patch.name&&patch.name!==undefined)delete patch.name;
@@ -1529,7 +1596,7 @@ function contractView(){
       if(done.length)patch.milestones=msp;
       const note=val('note');
       const summary=['Contract details entered. Moved to Real Deal.',price&&'Price '+price,loanAmt&&'Loan '+loanAmt,'Closing '+fmtDay(closeDate),done.length&&'Done: '+done.join(', ')].filter(Boolean).join(' · ');
-      const notes=clone(d.notes||[]);notes.push({at:now,by:S.me,text:summary+(note?' - '+note:'')});patch.notes=notes.slice(-200);
+      const notes=clone(d.notes||[]);notes.push({at:now,by:S.me,internal:1,text:summary+(note?' - '+note:'')});patch.notes=notes.slice(-200);
       const send=emailAgent&&val('agent');
       patchDeal(d,patch);
       S.modal=null;S.contractId=null;S.open=null;S.log=null;render();toast(`${d.name} moved to Real Deal`);
@@ -1602,6 +1669,29 @@ function agentSuggestBox(label,input,onPick,cls){
   input.addEventListener('blur',()=>setTimeout(()=>{sugg.hidden=true;},150));
   input.addEventListener('keydown',e=>{if(e.key==='Escape')sugg.hidden=true;});
   return h('label',{class:(cls||'')+' agentfield'},label,input,sugg);
+}
+// Agent names: match what's typed against the agent list so one agent isn't saved two ways
+const agKey=n=>String(n||'').toLowerCase().replace(/[^a-z\s]/g,' ').replace(/\s+/g,' ').trim();
+function agDist(a,b){const m=a.length,n=b.length;if(Math.abs(m-n)>2)return 9;let p=Array.from({length:n+1},(_,j)=>j);
+  for(let i=1;i<=m;i++){const c=[i];for(let j=1;j<=n;j++)c.push(Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1)));p=c;}return p.at(n);}
+function agentNear(name){
+  const k=agKey(name);if(!k)return {exact:null,near:null};const pool=S.agents||[];
+  const exact=pool.find(a=>agKey(a.n)===k);if(exact)return {exact,near:null};
+  const t=k.split(' '),first=t.at(0),last=t.length>1?t.at(-1):'';
+  const near=pool.find(a=>{const u=agKey(a.n).split(' '),af=u.at(0),al=u.length>1?u.at(-1):'';
+    if(last&&al===last&&af&&first&&af.at(0)===first.at(0))return true;   // "Kat L Lewis", "K Lewis", "Katherine Lewis"
+    if(last&&last.length<=2&&al.startsWith(last.replace(/\./g,''))&&af===first)return true; // "Kat L."
+    return k.length>=6&&agDist(agKey(a.n),k)<=2;});
+  return {exact:null,near};
+}
+// Returns the agent to use for a typed name: an existing list entry, or a new one (added to the list)
+function resolveAgent(name,extra){
+  name=String(name||'').trim();if(!name)return null;
+  const r=agentNear(name);
+  if(r.exact)return Object.assign({},r.exact,{_known:1});
+  if(r.near&&confirm(`"${name}" looks like ${r.near.n} on your agent list. Use ${r.near.n}?`))return Object.assign({},r.near,{_known:1});
+  const a={n:name,e:(extra&&extra.e)||'',p:(extra&&extra.p)||'',b:'',t:''};saveNewAgent(a);
+  S.agents=(S.agents||[]).concat([a]);return a;
 }
 async function saveNewAgent(a){
   try{
@@ -1819,7 +1909,9 @@ function modalView(){
       if(st.pick&&!whenV){errEl.textContent='Pick the date and time for '+st.l.toLowerCase()+'.';return;}
       let agent={n:'',e:'',p:'',b:'',t:''},newAgent=false;
       if(S.addAgent){agent=clone(S.addAgent);if(!agent.e&&val('m-selemail')){agent.e=val('m-selemail');newAgent=false;}}
-      else if(val('m-agent')){agent={n:val('m-agent'),e:val('m-agentemail'),p:fmtPhone(val('m-agentphone')),b:'',t:''};newAgent=true;}
+      else if(val('m-agent')){const r=agentNear(val('m-agent'));const hit=r.exact||(r.near&&confirm(`"${val('m-agent')}" looks like ${r.near.n} on your agent list. Use ${r.near.n}?`)?r.near:null);
+        if(hit){agent=Object.assign({b:'',t:''},clone(hit));if(!agent.e)agent.e=val('m-agentemail');if(!agent.p)agent.p=fmtPhone(val('m-agentphone'));newAgent=false;}
+        else{agent={n:val('m-agent'),e:val('m-agentemail'),p:fmtPhone(val('m-agentphone')),b:'',t:''};newAgent=true;}}
       const btn=f.querySelector('button[type=submit]');btn.disabled=true;btn.textContent='Adding…';
       const id=await createLead({name,phone:fmtPhone(val('m-phone')),email:val('m-email'),source:val('m-source'),start:startK,
         when:whenV?new Date(whenV).toISOString():null,at:!st.pick&&val('m-at')?new Date(val('m-at')).toISOString():null,atTitle:val('m-attitle'),agent,newAgent,thanks:thanksAllowed&&val('m-thanks')===true,note:val('m-note')});
