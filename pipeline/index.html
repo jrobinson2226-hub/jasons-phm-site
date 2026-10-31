@@ -102,6 +102,22 @@ input,select,textarea{border:1px solid var(--line);background:var(--panel);borde
 textarea{resize:vertical;min-height:64px}
 
 /* board */
+.dash{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
+.dash .sec{min-width:0}
+@media (max-width:520px){.dgrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.hbar{grid-template-columns:110px 1fr auto}}
+.dash h2{font-size:15px;margin:0 0 10px;color:var(--heading);text-transform:uppercase;letter-spacing:.4px}
+.dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tile{background:var(--panel-2,var(--panel));border:1px solid var(--line);border-radius:4px;padding:10px 12px;min-width:0}
+.tile .v{font-size:26px;font-weight:700;line-height:1.15;color:var(--ink)}
+.tile .l{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+.tile .s{font-size:12.5px;color:var(--muted)}
+.dtable{width:100%;border-collapse:collapse;font-size:14px}
+.dtable th,.dtable td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.dtable th:first-child,.dtable td:first-child{text-align:left}
+.dtable thead th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+.dscroll{overflow-x:auto}
+.hbar{display:grid;grid-template-columns:minmax(120px,200px) 1fr auto;gap:10px;align-items:center;font-size:14px;padding:3px 0}
+.hbar i{display:block;height:10px;border-radius:2px;background:var(--accent);min-width:2px}
 .board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(240px,1fr);gap:12px;overflow-x:auto;padding-bottom:10px}
 .col{background:var(--panel-2);border-radius:4px;padding:10px;min-height:200px;display:flex;flex-direction:column;gap:8px}
 .col h3{margin:0 0 2px;font:400 22px/1 var(--display);letter-spacing:.5px;color:var(--heading);display:flex;justify-content:space-between;align-items:baseline}
@@ -333,6 +349,7 @@ a.tel:hover{color:var(--accent,#1a5fb4)}
     <div class="tabs" role="group" aria-label="View">
       <button id="tab-follow" aria-pressed="true">Follow-ups</button>
       <button id="tab-board" aria-pressed="false">Pipeline</button>
+      <button id="tab-dash" aria-pressed="false" hidden>Dashboard</button>
     </div>
     <div class="search">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
@@ -698,7 +715,7 @@ const DISPOS=[
   {k:'approved',l:'Applied, initially approved',next:'none',stage:'prequal',stageIf:['lead','opp','nurture']},
   {k:'notready',l:'Not ready yet',next:'none',stage:'nurture',stageIf:['lead','opp','prequal','preapproval'],not:['realdeal']},
   {k:'never',l:'Never reached',next:'none',stage:'nurture',only:['lead']},
-  {k:'dead',l:'Not interested / hung up',next:'none',stage:'dead',not:['preapproval','realdeal']},
+  {k:'dead',l:'Not interested / hung up',next:'none',stage:'dead',not:['preapproval','realdeal'],reason:true},
   {k:'bad',l:'Bad number',next:'none',stage:'dead',not:['preapproval','realdeal']},
   {k:'funded',l:'Funded',next:'none',stage:'closed',only:['realdeal'],good:true},
   {k:'canceled',l:'Canceled',next:'none',stage:'dead',only:['preapproval','realdeal'],reason:true},
@@ -709,6 +726,8 @@ const DISPOS=[
   {k:'skip',l:'Skip',next:'none',quiet:true,skip:true},
 ];
 const CANCEL_REASONS=['Rate','Program','Inspection','Appraisal','Credit'];
+const DEAD_REASONS=['Went with another lender','Didn’t qualify','Decided not to buy','Stopped responding','Other'];
+const reasonsFor=dp=>dp.k==='dead'?DEAD_REASONS:CANCEL_REASONS;
 const disposFor=(d,item)=>DISPOS.filter(x=>(!x.only||x.only.includes(d.stage))&&(!x.not||!x.not.includes(d.stage))&&(!x.skip||(item&&item.type==='task')));
 function dispoStage(d,dp){if(!dp||!dp.stage)return null;if(dp.stageIf&&!dp.stageIf.includes(d.stage))return null;return dp.stage===d.stage?null:dp.stage;}
 // Skip pushes the follow-up to the next business morning (9 AM). Later cadence steps in the same stage
@@ -755,7 +774,9 @@ function saveLog(d,item,dp,note,nextTitle,nextDue,notifyAgent,reason){
     patch.tasks.push({id:uid(),title:'Quarterly nurture touch',due:quietShift(atNine(new Date(now),90)).toISOString(),owner:S.ownerId||S.me,done:false,kind:'cadence',stage:'nurture',from:now});
   const label=dp.l+(reason?': '+reason:'');
   if(dp.k==='funded'){const td=dayStr(new Date());patch.fundedAt=now;if(!d.closeDate||d.closeDate>td)patch.closeDate=td;}
-  if(dp.reason){patch.cancelReason=reason||'';patch.canceledFrom=d.stage;patch.canceledAt=now;}
+  if(dp.reason&&dp.k==='dead'){patch.deadReason=reason||'';patch.deadFrom=d.stage;patch.deadAt=now;}
+  else if(dp.reason){patch.cancelReason=reason||'';patch.canceledFrom=d.stage;patch.canceledAt=now;}
+  if(st==='dead'&&!dp.reason&&dp.k==='bad')patch.deadAt=now;
   const notes=clone(d.notes||[]);notes.push({at:now,by:S.me,text:label+(note?' - '+note:'')});patch.notes=notes.slice(-200);
   patch.lastDisposition=label;patch.lastTouchAt=now;
   patchDeal(d,patch);
@@ -835,9 +856,10 @@ function restoreState(root,st){
 function draw(){
   document.getElementById('tab-follow').setAttribute('aria-pressed',String(S.view==='follow'));
   document.getElementById('tab-board').setAttribute('aria-pressed',String(S.view==='board'));
+  const td=document.getElementById('tab-dash');td.hidden=!S.isOwner;td.setAttribute('aria-pressed',String(S.view==='dash'));
   const main=document.getElementById('main'),layer=document.getElementById('layer');
   const st1=keepState(main),st2=keepState(layer);
-  main.replaceChildren(S.blocked?blockedView():!S.ready?h('div',{class:'empty'},h('b',{text:'Loading your pipeline'}),'Borrower files and follow-ups appear here once they load.'):(S.view==='follow'?followView():boardView()));
+  main.replaceChildren(S.blocked?blockedView():!S.ready?h('div',{class:'empty'},h('b',{text:'Loading your pipeline'}),'Borrower files and follow-ups appear here once they load.'):(S.view==='follow'?followView():S.view==='dash'&&S.isOwner?dashView():boardView()));
   layer.replaceChildren(...[S.open?drawerView():null,S.modal?modalView():null].filter(Boolean));
   restoreState(main,st1);restoreState(layer,st2);
 }
@@ -851,6 +873,63 @@ function whoSeg(){
 function matchesWho(owner){return S.who==='all'||owner===(S.who==='me'?S.me:S.who);}
 function teamSelect(value,onchange,keep){
   return h('select',{onchange:e=>onchange(e.target.value),'data-keep':keep,'aria-label':'Assigned to'},team().map(id=>h('option',{value:id,selected:id===value,text:nameOf(id)})));
+}
+
+/* ---------- dashboard (Jason only) ---------- */
+// Dates: application = first time a file reached PreQual, PreApproved or Real Deal; Real Deal = contract date
+// (or the day it moved to Real Deal); funding = the day Funded was logged (or it moved to Closed).
+// Volume = loan amount entered on the file. Files stay counted after they cancel, so these are units written.
+const dAmt=v=>{const n=Number(String(v||'').replace(/[^0-9.]/g,''));return isFinite(n)&&n>0?n:0;};
+const dMoney=n=>n>=1e6?'$'+(n/1e6).toFixed(2)+'M':'$'+Math.round(n).toLocaleString('en-US');
+function dTs(v){if(!v)return null;const t=/^\d{4}-\d{2}-\d{2}$/.test(v)?parseDay(v).getTime():new Date(v).getTime();return isFinite(t)?t:null;}
+function dAppAt(d){const sd=d.stageDates||{};const ts=['prequal','preapproval','realdeal'].map(k=>dTs(sd[k])).filter(x=>x!=null);return ts.length?Math.min(...ts):null;}
+function dRealAt(d){return dTs(d.contractDate)||dTs((d.stageDates||{}).realdeal);}
+function dFundAt(d){return dTs(d.fundedAt)||(d.stage==='closed'?(dTs((d.stageDates||{}).closed)||dTs(d.closeDate)):null);}
+function dLost(d){
+  if(d.stage!=='dead')return null;
+  const at=dTs(d.canceledAt)||dTs(d.deadAt)||dTs((d.stageDates||{}).dead);
+  const why=d.canceledFrom?'Canceled: '+(d.cancelReason||'no reason'):d.deadReason?d.deadReason:/^Bad number/.test(d.lastDisposition||'')?'Bad number':'No reason (moved by hand)';
+  return {at,why};
+}
+function dashView(){
+  const deals=allDeals(),now=new Date();
+  const mtd=new Date(now.getFullYear(),now.getMonth(),1).getTime(),ytd=new Date(now.getFullYear(),0,1).getTime();
+  const wk=new Date(now);wk.setHours(0,0,0,0);wk.setDate(wk.getDate()-((wk.getDay()+6)%7));const wkT=wk.getTime();
+  const monthName=now.toLocaleDateString([], {month:'long'});
+  const sum=(list,from,fn)=>{const hit=list.filter(d=>{const t=fn(d);return t!=null&&t>=from;});const known=hit.filter(d=>dAmt(d.loanAmt));
+    return {n:hit.length,vol:known.reduce((a,d)=>a+dAmt(d.loanAmt),0),missing:hit.length-known.length};};
+  const rows=[['Applications',dAppAt],['Real Deals',dRealAt],['Fundings',dFundAt]].map(([l,fn])=>({l,m:sum(deals,mtd,fn),y:sum(deals,ytd,fn)}));
+  const volCell=x=>x.n?(x.vol?dMoney(x.vol):'—')+(x.missing?` (${x.missing} without loan amt)`:''):'—';
+  const active=['lead','opp','prequal','preapproval','realdeal','nurture'];
+  const counts=active.map(k=>({k,n:deals.filter(d=>d.stage===k).length}));
+  const maxN=Math.max(1,...counts.map(c=>c.n));
+  const rd=deals.filter(d=>d.stage==='realdeal');
+  const rdVol=rd.reduce((a,d)=>a+dAmt(d.loanAmt),0);
+  const closingThisMonth=rd.filter(d=>{const t=dTs(d.closeDate);return t!=null&&new Date(t).getMonth()===now.getMonth()&&new Date(t).getFullYear()===now.getFullYear();});
+  const moved=['lead','opp','prequal','preapproval','realdeal','closed','nurture','dead'].map(k=>({k,n:deals.filter(d=>{const t=dTs((d.stageDates||{})[k]);return t!=null&&t>=wkT;}).length}));
+  const lost={};for(const d of deals){const x=dLost(d);if(x&&x.at!=null&&x.at>=ytd)lost[x.why]=(lost[x.why]||0)+1;}
+  const lostRows=Object.entries(lost).sort((a,b)=>b[1]-a[1]);
+  const tile=(l,v,sub)=>h('div',{class:'tile'},h('div',{class:'l',text:l}),h('div',{class:'v',text:v}),sub?h('div',{class:'s',text:sub}):null);
+  return h('div',{class:'dash'},
+    h('div',{class:'bar'},h('h1',{text:'Dashboard'}),h('span',{class:'note',text:'As of '+now.toLocaleDateString([], {weekday:'short',month:'short',day:'numeric'})})),
+    h('section',{class:'sec'},h('h2',{text:'Production'}),
+      h('div',{class:'dgrid'},
+        tile(monthName+' applications',String(rows[0].m.n),`${rows[0].y.n} this year`),
+        tile(monthName+' Real Deals',String(rows[1].m.n),rows[1].m.vol?dMoney(rows[1].m.vol):`${rows[1].y.n} this year`),
+        tile(monthName+' fundings',String(rows[2].m.n),rows[2].m.vol?dMoney(rows[2].m.vol):`${rows[2].y.n} this year`),
+        tile('Real Deals in process',String(rd.length),rdVol?dMoney(rdVol)+' in loan amount':null),
+        tile('Closing this month',String(closingThisMonth.length),closingThisMonth.reduce((a,d)=>a+dAmt(d.loanAmt),0)?dMoney(closingThisMonth.reduce((a,d)=>a+dAmt(d.loanAmt),0)):null)),
+      h('div',{class:'dscroll',style:'margin-top:12px'},h('table',{class:'dtable'},
+        h('thead',{},h('tr',{},h('th',{text:''}),h('th',{text:'MTD units'}),h('th',{text:'MTD volume'}),h('th',{text:'YTD units'}),h('th',{text:'YTD volume'}))),
+        h('tbody',{},rows.map(r=>h('tr',{},h('td',{text:r.l}),h('td',{text:String(r.m.n)}),h('td',{text:volCell(r.m)}),h('td',{text:String(r.y.n)}),h('td',{text:volCell(r.y)})))))),
+      h('div',{class:'note',style:'margin-top:8px',text:'Volume is the loan amount on each file. Applications usually don’t have one yet. Files still count after they cancel.'})),
+    h('section',{class:'sec'},h('h2',{text:'Pipeline right now'}),
+      counts.map(c=>h('div',{class:'hbar'},h('span',{text:stageName(c.k)}),h('i',{style:`width:${Math.round(100*c.n/maxN)}%`}),h('b',{text:String(c.n)})))),
+    h('section',{class:'sec'},h('h2',{text:'Moved this week'}),
+      h('div',{class:'note',style:'margin-bottom:8px',text:'Files that entered each milestone since Monday.'}),
+      h('div',{class:'dgrid',style:'grid-template-columns:repeat(auto-fit,minmax(112px,1fr))'},moved.map(m=>tile(stageName(m.k),String(m.n))))),
+    h('section',{class:'sec'},h('h2',{text:'Why files were lost this year'}),
+      lostRows.length?h('table',{class:'dtable'},h('tbody',{},lostRows.map(([w,n])=>h('tr',{},h('td',{text:w}),h('td',{text:String(n)}))))):h('div',{class:'note',text:'No lost files this year.'})));
 }
 
 /* ---------- follow-ups view ---------- */
@@ -955,7 +1034,7 @@ function cardView(d){
   if(MS_STAGES.includes(d.stage)){const ms=MILESTONES.filter(m=>m.g===d.stage).map(m=>msInfo(d,m)).filter(i=>!i.skipped);
     const done=ms.filter(i=>i.done).length;if(ms.length)progress=[done,ms.length];}
   return h('button',{class:'card',onclick:()=>{S.open=d.id;S.log=null;render();}},
-    h('span',{class:'nm'},d.name,d.stage==='prequal'?h('span',{class:'chip ms',style:'margin-left:6px',text:pqLabel(d)}):d.stage==='preapproval'?h('span',{class:'chip ms',style:'margin-left:6px',text:paLabel(d)}):d.stage==='dead'&&d.canceledFrom?h('span',{class:'chip ms',style:'margin-left:6px',text:'Canceled'+(d.cancelReason?' · '+d.cancelReason:'')}):d.stage==='nurture'&&d.neverReached?h('span',{class:'chip ms',style:'margin-left:6px',text:'Never reached'}):null),
+    h('span',{class:'nm'},d.name,d.stage==='prequal'?h('span',{class:'chip ms',style:'margin-left:6px',text:pqLabel(d)}):d.stage==='preapproval'?h('span',{class:'chip ms',style:'margin-left:6px',text:paLabel(d)}):d.stage==='dead'&&d.canceledFrom?h('span',{class:'chip ms',style:'margin-left:6px',text:'Canceled'+(d.cancelReason?' · '+d.cancelReason:'')}):d.stage==='dead'&&d.deadReason?h('span',{class:'chip ms',style:'margin-left:6px',text:d.deadReason}):d.stage==='nurture'&&d.neverReached?h('span',{class:'chip ms',style:'margin-left:6px',text:'Never reached'}):null),
     h('span',{class:'ln'},h('span',{text:d.agentName?'Agent: '+d.agentName:(d.source||'')}),d._lane!==S.ownerId&&S.isOwner?h('span',{text:firstName(d._lane)}):null),
     d.stage==='realdeal'&&d.closeDate?h('span',{class:'ln'},h('span',{text:'Closes '+fmtDay(d.closeDate)+(d.closeTime?' · '+d.closeTime:'')}),d.program?h('span',{text:d.program}):null):null,
     d.stage==='realdeal'&&d.apprDue&&!d.piw&&!((d.milestones||{}).apprRec||{}).done?h('span',{class:'ln'+(dueState(atNine(parseDay(d.apprDue),0).toISOString())==='late'?' late':'')},h('span',{text:'Appraisal due '+fmtDay(d.apprDue)})):null,
@@ -1129,8 +1208,9 @@ function logCard(d){
     const st=dispoStage(d,dp);
     const lines=[];
     if(dp.reason){
-      reasonIn=h('select',{id:'lg-r-'+d.id,'data-keep':'lg-r-'+d.id,'aria-label':'Why the file canceled',required:true},h('option',{value:'',text:'Pick a reason'}),CANCEL_REASONS.map(r=>h('option',{value:r,text:r})));
-      lines.push(h('div',{class:'nextrow'},h('label',{},'Why the file canceled',reasonIn)));
+      const rl=dp.k==='dead'?'Why it’s not moving forward':'Why the file canceled';
+      reasonIn=h('select',{id:'lg-r-'+d.id+'-'+dp.k,'data-keep':'lg-r-'+d.id+'-'+dp.k,'aria-label':rl,required:true},h('option',{value:'',text:'Pick a reason'}),reasonsFor(dp).map(r=>h('option',{value:r,text:r})));
+      lines.push(h('div',{class:'nextrow'},h('label',{},rl,reasonIn)));
     }
     if(st)lines.push(h('div',{class:'outcome',text:`Moves to ${stageName(st)}`+(CADENCE[st]?`, and its follow-up cadence starts.`:'.')+(dp.reason?' Open follow-ups are cleared.':'')+(dp.k==='never'?' Labeled Never reached. No agent email.':'')+(dp.k==='fellthrough'?' The contract dates and Real Deal checklist are cleared, and you pick a new Home Search pace. No agent email.':'')+(dp.k==='funded'?(!d.closeDate||d.closeDate>dayStr(new Date())?' Close date set to today.':'')+' Open follow-ups are cleared. The thank-you email to the seller’s agent goes on Suzanne’s list 3 days from today.':'')}));
     let preT='',preD='';
@@ -1157,7 +1237,7 @@ function logCard(d){
     const t=titleIn?titleIn.value.trim():'';const dv=dueIn?dueIn.value:'';
     if(dp.next&&dp.next.pick&&!dv){err.textContent='Pick the date and time they asked you to call back.';return;}
     if(t&&!dv){err.textContent='Add a date and time for the next follow-up.';return;}
-    if(dp.reason&&!(reasonIn&&reasonIn.value)){err.textContent='Pick why the file canceled.';return;}
+    if(dp.reason&&!(reasonIn&&reasonIn.value)){err.textContent=dp.k==='dead'?'Pick why it’s not moving forward.':'Pick why the file canceled.';return;}
     const nb=document.getElementById('lg-agent-'+d.id);
     saveLog(d,item,dp,note.value.trim(),t,dv?new Date(dv).toISOString():null,!!(nb&&nb.checked),reasonIn?reasonIn.value:'');
   },text:dp?'Save':'Pick a disposition'});
@@ -1201,6 +1281,7 @@ function drawerView(){
       d.stage==='realdeal'||d.stage==='closed'?[
         h('label',{},'Purchase price',h('input',{id:'f-price',inputmode:'decimal',value:d.price||'',onchange:e=>patchDeal(d,{price:fmtMoney(e.target.value)})})),
         h('label',{},'Loan amount',h('input',{id:'f-loanAmt',inputmode:'decimal',value:d.loanAmt||'',onchange:e=>patchDeal(d,{loanAmt:fmtMoney(e.target.value)})})),
+        (()=>{const pr=dAmt(d.price),la=dAmt(d.loanAmt);return pr&&la&&pr>=la?h('div',{class:'note full',text:`Down payment: ${dMoney(pr-la)} (${(100*(pr-la)/pr).toFixed(1)}%)`}):null;})(),
         field('Contract date','contractDate','date'),
         field('Close date','closeDate','date'),
         field('Closing time','closeTime','time'),
@@ -1777,6 +1858,7 @@ qIn.addEventListener('keydown',e=>{
 /* ---------- boot ---------- */
 document.getElementById('tab-follow').onclick=()=>{S.view='follow';render();};
 document.getElementById('tab-board').onclick=()=>{S.view='board';render();};
+document.getElementById('tab-dash').onclick=()=>{S.view='dash';render();};
 document.getElementById('btn-add').onclick=()=>{if(!S.ready)return;S.modal='add';render();};
 setInterval(render,60000); // re-evaluate past-due states each minute
 
