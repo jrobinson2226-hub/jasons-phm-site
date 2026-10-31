@@ -401,18 +401,18 @@ const CADENCE={
 const MILESTONES=[
   {k:'cert',g:'preapproval',l:'Send Competitive Edge certificate to agent',r:'partner',asap:1},
   {k:'pace',g:'preapproval',l:'Home Search: set follow-up pace (High, Medium or Low)',r:'lo',after:'cert',daily:1},
-  {k:'letter',g:'preapproval',l:'Pre-approval letter sent to agent',r:'lo',nodue:1},
   // Contract relay: each step fires the moment the one before it is checked off
   {k:'loaded',g:'realdeal',l:'Load the contract',r:'partner',asap:1},
   {k:'review',g:'realdeal',l:'Call borrower to review the contract and lock the rate',r:'lo',after:'loaded'},
   {k:'lock',g:'realdeal',l:'Rate locked',r:'lo',nodue:1},
-  {k:'discSent',g:'realdeal',l:'Disclosures sent',r:'partner',after:'review'},
+  {k:'discSent',g:'realdeal',l:'Disclosures sent',r:'partner',after:'review',daily:1},
   {k:'title',g:'realdeal',l:'Title ordered',r:'partner',after:'review',daily:1},
   {k:'hoi',g:'realdeal',l:'Homeowners insurance ordered',r:'partner',after:'review',daily:1},
   {k:'apprLink',g:'realdeal',l:'Appraisal payment link sent',r:'partner',after:'review',daily:1,piw:1},
   {k:'apprOrd',g:'realdeal',l:'Appraisal ordered',r:'partner',after:'review',daily:1,piw:1},
   {k:'ops2',g:'realdeal',l:'File submitted to OPS',r:'partner',after:'review'},
-  {k:'discRec',g:'realdeal',l:'Disclosures received',r:'partner',nodue:1},
+  // Disclosures received: 2 days after they're sent, then every 2 days ("Not yet") until checked off
+  {k:'discRec',g:'realdeal',l:'Disclosures received',r:'partner',after:'discSent',afterDays:2,every:2},
   // Contract deadlines: reminder 2 days before each date entered in Loan details
   {k:'dlInsp',g:'realdeal',l:'Inspection deadline',r:'lo',field:'inspDate',before:2},
   {k:'dlAppr',g:'realdeal',l:'Appraisal contingency deadline',r:'partner',field:'apprContDate',before:2,piw:1},
@@ -426,7 +426,7 @@ const MILESTONES=[
   {k:'cal',g:'realdeal',l:'Closing on calendar',r:'partner',k2:-7,daily:1},
   {k:'confirm',g:'realdeal',l:'Final numbers sent to borrower',r:'partner',k2:-2},
   // The day after closing (next business day on a weekend): Jason confirms it funded. Nothing moves on its own.
-  {k:'fundConf',g:'realdeal',l:'Confirm funded (day after closing)',r:'partner',k2:1},
+  {k:'fundConf',g:'realdeal',l:'Confirm funded (day after closing)',r:'partner',k2:1,both:1},
   {k:'coupon',g:'realdeal',l:'Thank-you email to seller’s agent with coupon (3 days after funded)',r:'partner',funded:3,post:1},
 ];
 const MS_STAGES=['prequal','preapproval','realdeal'];
@@ -526,7 +526,7 @@ function msInfo(deal,m){
   if(m.nodue)return {done:!!st.done,doneAt:st.doneAt||null,owner:st.owner||roleUid(m.r),due:null,skipped:!!(m.piw&&deal.piw)};
   if(!due&&m.field){const v=deal[m.field];if(!v)return {done:!!st.done,doneAt:st.doneAt||null,owner:st.owner||roleUid(m.r),due:null,skipped:!!(m.piw&&deal.piw),nofield:true};due=atNine(parseDay(v),-(m.before||0)).toISOString();}
   if(!due&&m.asap){const sd=(deal.stageDates||{})[m.g];due=sd||(deal.contractDate?atNine(parseDay(deal.contractDate),0).toISOString():null);}
-  if(!due&&m.after){const pre=(deal.milestones||{})[m.after]||{};due=pre.done?(pre.doneAt||nowIso()):null;
+  if(!due&&m.after){const pre=(deal.milestones||{})[m.after]||{};due=pre.done?(pre.doneAt||nowIso()):null;if(due&&m.afterDays)due=quietShift(new Date(new Date(due).getTime()+m.afterDays*864e5)).toISOString();
     return {done:!!st.done,doneAt:st.doneAt||null,owner:st.owner||roleUid(m.r),due,skipped:!!(m.piw&&deal.piw),waiting:!pre.done};}
   if(!due&&m.funded!=null){const fd=deal.fundedAt?new Date(deal.fundedAt):(deal.stage==='closed'&&deal.closeDate?parseDay(deal.closeDate):null);
     return {done:!!st.done,doneAt:st.doneAt||null,owner:st.owner||roleUid(m.r),due:fd?atNine(fd,m.funded).toISOString():null,skipped:false,waitFunded:!fd};}
@@ -571,8 +571,13 @@ function openItemsFor(deal){
     if(deal.stage==='closed'?!m.post:m.g!==deal.stage)continue;const i=msInfo(deal,m);
     if(i.done||i.skipped||!i.due)continue;
     const before=m.field||(m.k2!=null&&m.k2<0);
-    items.push({type:'ms',deal,ms:m,id:m.k,title:m.l,due:(before?quietBack:quietShift)(new Date(i.due)).toISOString(),owner:i.owner});
+    const mi={type:'ms',deal,ms:m,id:m.k,title:m.l,due:(before?quietBack:quietShift)(new Date(i.due)).toISOString(),owner:i.owner};items.push(mi);
+    if(m.both&&partnerId()&&partnerId()!==S.ownerId)items.push(Object.assign({},mi,{owner:i.owner===S.ownerId?partnerId():S.ownerId,shared:1}));
   }
+  // Rate not locked after the review call: stays on Jason's list until it's locked or a call to lock is scheduled
+  if(deal.stage==='realdeal'){const ms0=deal.milestones||{};
+    if((ms0.review||{}).done&&!(ms0.lock||{}).done&&!(deal.tasks||[]).some(t=>t.lockCall&&!t.done))
+      items.push({type:'ms',deal,ms:MILESTONES.find(m=>m.k==='lock'),id:'lock',title:'Rate not locked: lock it or schedule a call to lock',due:quietShift(new Date(ms0.review.doneAt||nowIso())).toISOString(),owner:S.ownerId});}
   const wrap=wrapItem(deal);if(wrap)items.push(wrap);
   const stale=staleItem(deal,items);if(stale)items.push(stale);
   // Real Deal safety net goes to both Jason and Suzanne; logging a contact clears both
@@ -739,7 +744,7 @@ const DISPOS=[
   {k:'bad',l:'Bad number',next:'none',stage:'dead',not:['preapproval','realdeal']},
   {k:'funded',l:'Funded',next:'none',stage:'closed',only:['realdeal'],good:true},
   {k:'canceled',l:'Canceled',next:'none',stage:'dead',only:['preapproval','realdeal'],reason:true},
-  {k:'fellthrough',l:'Contract fell through',next:'none',stage:'preapproval',only:['realdeal']},
+  {k:'fellthrough',l:'Contract fell through',next:'none',stage:'preapproval',only:['realdeal'],dest:true},
   // Quiet dispositions: act like nothing happened. No contact logged (safety net and cadence don't reset),
   // no stage move, no "Last:" change, no agent email.
   {k:'note',l:'Add note',next:'none',quiet:true},
@@ -771,13 +776,14 @@ function saveQuiet(d,item,dp,note){
   S.log=null;S.open=null;S.armDelete=null;render();
   toast(dp.skip?'Skipped to '+fmtDue(skipTo().toISOString()):'Note added');
 }
+const FT_DEST={preapproval:'Back to PreApproved (still shopping)',nurture:'Nurture (not looking right now)'};
 function saveLog(d,item,dp,note,nextTitle,nextDue,notifyAgent,reason){
   if(dp.quiet)return saveQuiet(d,item,dp,note);
   const now=nowIso();let tasks=clone(d.tasks||[]);const patch={};
   if(item&&item.type==='task')tasks=tasks.map(t=>t.id===item.id?Object.assign(t,{done:true,doneAt:now,doneBy:S.me,disposition:dp.l}):t);
   if(item&&item.type==='ms'&&!dp.reason&&!dp.good)patch.milestones={[item.id]:Object.assign({},(d.milestones||{})[item.id]||{},{done:true,doneAt:now,doneBy:S.me})};
   if(dp.clear)tasks=tasks.filter(t=>t.done||t.kind!=='cadence');
-  const st=dispoStage(d,dp);
+  const st=dp.dest?(reason==='nurture'?'nurture':'preapproval'):dispoStage(d,dp);
   if(st)Object.assign(patch,stagePatch(dp.k==='fellthrough'?Object.assign({},d,{pace:null}):d,st,tasks));else patch.tasks=tasks;
   if(dp.k==='fellthrough'){
     // Back to Home Search: clear the old contract and the Real Deal checklist so the next contract starts fresh
@@ -792,7 +798,7 @@ function saveLog(d,item,dp,note,nextTitle,nextDue,notifyAgent,reason){
   // Nurture never runs out: once the 6-month steps are done, a touch every 90 days keeps going
   if(!st&&d.stage==='nurture'&&!patch.tasks.some(t=>!t.done&&t.due&&(t.stage||'nurture')==='nurture'))
     patch.tasks.push({id:uid(),title:'Quarterly nurture touch',due:quietShift(atNine(new Date(now),90)).toISOString(),owner:S.ownerId||S.me,done:false,kind:'cadence',stage:'nurture',from:now});
-  const label=dp.l+(reason?': '+reason:'');
+  const label=dp.l+(dp.dest?': '+(reason==='nurture'?'to Nurture':'back to PreApproved'):reason?': '+reason:'');
   if(dp.k==='funded'){const td=dayStr(new Date());patch.fundedAt=now;if(!d.closeDate||d.closeDate>td)patch.closeDate=td;}
   if(dp.reason&&dp.k==='dead'){patch.deadReason=reason||'';patch.deadFrom=d.stage;patch.deadAt=now;}
   else if(dp.reason){patch.cancelReason=reason||'';patch.canceledFrom=d.stage;patch.canceledAt=now;}
@@ -833,6 +839,7 @@ function completeItem(it){
   if(it.type==='wrap'){openLog(it);toast('Move the file to clear this one');return;}
   if(it.type==='task')setTask(it.deal,it.id,stamp);
   else if(it.type==='ms'&&it.id==='fundConf'){askFunded(it.deal);return;}
+  else if(it.type==='ms'&&(it.id==='review'||it.id==='lock')&&!((it.deal.milestones||{}).lock||{}).done){openLog(it);toast('Lock the rate or schedule the call to lock it');return;}
   else if(it.type==='pq'){S.open=it.deal.id;S.log=null;render();toast('Move it with the PreQual status bar');return;}
   else if(it.type==='ms'&&it.id==='pace'){S.open=it.deal.id;S.log=null;render();toast('Pick High, Medium or Low to start Home Search follow-ups');return;}
   else if(it.type==='ms')setMs(it.deal,it.id,stamp);
@@ -1122,9 +1129,9 @@ function pqToggle(d){
   const off=!!d.pqInactive;const st=d.pqStatus||'app';
   return h('div',{class:'pqbar'},
     h('div',{class:'seg',role:'group','aria-label':'PreQual status'},
-      Object.entries(PQ_ST).map(([k,l])=>h('button',{type:'button','aria-pressed':String(st===k),disabled:off||(!S.isOwner&&k==='docs'&&!['docs','uw'].includes(st)),title:!S.isOwner&&k==='docs'&&!['docs','uw'].includes(st)?'Jason moves the file to Needs list sent':null,onclick:()=>setPqStatus(d,k),text:l}))),
+      Object.entries(PQ_ST).map(([k,l])=>h('button',{type:'button','aria-pressed':String(st===k),disabled:off,onclick:()=>setPqStatus(d,k),text:l}))),
     h('label',{class:'check'},h('input',{type:'checkbox',id:'pq-inactive-'+d.id,checked:off,onchange:e=>setPqInactive(d,e.target.checked)}),'Inactive PreQual'),
-    h('span',{class:'note',text:off?'Paused: no follow-ups until this file is moved to PreApproved.':({app:'Application received. On Suzanne’s list every day until she moves it to App ready for review.',review:'App ready for review. On Jason’s list every day until he reviews it and moves it to Needs list sent.',docs:'Suzanne gets a follow-up every 3 days until docs are received and sent to underwriting.',uw:'Sent to underwriting. Suzanne checks on it every 2 days. Move to PreApproved when it’s fully underwritten.'}[st])+(()=>{if(!['docs','uw'].includes(st))return '';const s=pqActiveStart(d);if(!s)return '';const left=Math.ceil((new Date(s).getTime()+PQ_ACTIVE_DAYS*864e5-Date.now())/864e5);return left>0?` Goes inactive automatically in ${left} day${left===1?'':'s'}.`:'';})()}));
+    h('span',{class:'note',text:off?'Paused: no follow-ups until this file is moved to PreApproved.':({app:'Application received. On Suzanne’s list every day until she moves it to App ready for review.',review:'App ready for review. On Jason’s list every day until he (or Suzanne, filling in) moves it to Needs list sent.',docs:'Suzanne gets a follow-up every 3 days until docs are received and sent to underwriting.',uw:'Sent to underwriting. Suzanne checks on it every 2 days. Move to PreApproved when it’s fully underwritten.'}[st])+(()=>{if(!['docs','uw'].includes(st))return '';const s=pqActiveStart(d);if(!s)return '';const left=Math.ceil((new Date(s).getTime()+PQ_ACTIVE_DAYS*864e5-Date.now())/864e5);return left>0?` Goes inactive automatically in ${left} day${left===1?'':'s'}.`:'';})()}));
 }
 function pqLabel(d){if(d.stage!=='prequal')return '';if(d.pqInactive)return 'Inactive';return PQ_ST[d.pqStatus||'app']||'Application received';}
 const PQ_UW_CADENCE=[2,4,6,8,10,12,14,16,18,20,22,24,26,28,30].map(d=>({d,t:'Sent to underwriting: check on underwriting status',r:'partner'}));
@@ -1231,15 +1238,28 @@ function logCard(d){
     const mT=h('input',{id:'lg-mt-'+mk,'data-keep':'lg-mt-'+mk,placeholder:'Next follow-up (optional)','aria-label':'Next follow-up'});
     const mD=h('input',{id:'lg-md-'+mk,'data-keep':'lg-md-'+mk,type:'datetime-local','aria-label':'Next follow-up date and time'});
     const mErr=h('div',{class:'err','aria-live':'polite'});
+    const lockStep=(item.id==='review'||item.id==='lock')&&!((d.milestones||{}).lock||{}).done;
+    const lockBox=lockStep?h('input',{type:'checkbox',id:'lg-lock-'+mk,'data-keep':'lg-lock-'+mk}):null;
+    if(lockStep&&!mT.value)mT.value='Call borrower to lock rate';
+    const notYet=item.id==='discRec'?h('button',{class:'btn',type:'button',onclick:()=>{
+      const now=nowIso();const due=nextOpen(2).toISOString();const n=mNote.value.trim();
+      const notes=clone(d.notes||[]);notes.push({at:now,by:S.me,text:'Disclosures not received yet. Checking again '+fmtDue(due)+(n?' - '+n:'')});
+      patchDeal(d,{milestones:{discRec:Object.assign({},(d.milestones||{}).discRec||{},{due})},notes:notes.slice(-200)});S.log=null;S.open=null;render();toast('Checking again '+fmtDue(due));},text:'Not yet: check in 2 days'}):null;
     return h('section',{class:'sec log'},head,mNote,
+      lockStep?h('label',{class:'check',style:'margin:6px 0'},lockBox,'Rate locked'):null,
+      lockStep?h('div',{class:'note',text:'Not locked yet? Set the date and time to call and lock below.'}):null,
       h('div',{class:'nextblock'},h('div',{class:'nextrow'},h('label',{},'Next follow-up',mT),h('label',{},'When',mD))),mErr,
       h('div',{class:'logrow'},h('span',{class:'note',text:'Status items also check off from the list below.'}),cancelBtn,
-        h('button',{class:'btn primary',type:'button',onclick:()=>{
-          const t=mT.value.trim(),dv=mD.value;if(t&&!dv){mErr.textContent='Add a date and time for the next follow-up.';return;}
-          const now=nowIso();const patch={milestones:{[item.id]:Object.assign({},(d.milestones||{})[item.id]||{},{done:true,doneAt:now,doneBy:S.me})}};
-          if(t&&dv){const tasks=clone(d.tasks||[]);tasks.push({id:uid(),title:t,due:new Date(dv).toISOString(),owner:item.owner||S.me,done:false,kind:'manual',stage:d.stage});patch.tasks=tasks;}
+        notYet,h('button',{class:'btn primary',type:'button',onclick:()=>{
+          const t=mT.value.trim(),dv=mD.value;const locked=lockStep&&lockBox.checked;
+          if(lockStep&&!locked&&!dv){mErr.textContent='The rate isn’t locked yet. Check Rate locked, or add the date and time to call and lock.';return;}
+          if(t&&!dv&&!(lockStep&&locked)){mErr.textContent='Add a date and time for the next follow-up.';return;}
+          const now=nowIso();const stamp={done:true,doneAt:now,doneBy:S.me};const patch={milestones:{}};
+          if(item.id!=='lock'||locked)patch.milestones[item.id]=Object.assign({},(d.milestones||{})[item.id]||{},stamp);
+          if(locked)patch.milestones.lock=Object.assign({},(d.milestones||{}).lock||{},stamp);
+          if(t&&dv){const tasks=clone(d.tasks||[]);tasks.push(Object.assign({id:uid(),title:t,due:new Date(dv).toISOString(),owner:lockStep?S.ownerId:(item.owner||S.me),done:false,kind:'manual',stage:d.stage},lockStep&&!locked?{lockCall:1}:{}));patch.tasks=tasks;}
           const n=mNote.value.trim();const notes=clone(d.notes||[]);notes.push({at:now,by:S.me,text:'Done: '+item.title+(n?' - '+n:'')});patch.notes=notes.slice(-200);
-          patchDeal(d,patch);S.log=null;S.open=null;render();toast('Marked done');},text:'Mark done'})));
+          patchDeal(d,patch);S.log=null;S.open=null;render();toast(lockStep&&!locked?'Call to lock scheduled':'Marked done');},text:lockStep?'Save':'Mark done'})));
   }
 
   const pills=h('div',{class:'pills',role:'radiogroup','aria-label':'Disposition'},disposFor(d,item).map(x=>h('button',{type:'button',role:'radio','aria-checked':String(x.k===dk),class:'pill'+(x.k===dk?' on':'')+(x.k==='dead'||x.k==='canceled'?' bad':'')+(x.good?' good':''),onclick:()=>pick(x.k),text:x.l})));
@@ -1253,12 +1273,17 @@ function logCard(d){
   }else if(dp){
     const st=dispoStage(d,dp);
     const lines=[];
+    if(dp.dest){
+      reasonIn=h('select',{id:'lg-ft-'+d.id,'data-keep':'lg-ft-'+d.id,'aria-label':'Where the file goes',required:true},h('option',{value:'',text:'Pick one'}),Object.entries(FT_DEST).map(([v,l])=>h('option',{value:v,text:l})));
+      lines.push(h('div',{class:'nextrow'},h('label',{},'Where does the file go?',reasonIn)));
+      lines.push(h('div',{class:'outcome',text:'The contract dates and Real Deal checklist are cleared. Back to PreApproved: pick a new Home Search pace. Nurture: touches every 30 days. No agent email.'}));
+    }
     if(dp.reason){
       const rl=dp.k==='dead'?'Why it’s not moving forward':'Why the file canceled';
       reasonIn=h('select',{id:'lg-r-'+d.id+'-'+dp.k,'data-keep':'lg-r-'+d.id+'-'+dp.k,'aria-label':rl,required:true},h('option',{value:'',text:'Pick a reason'}),reasonsFor(dp).map(r=>h('option',{value:r,text:r})));
       lines.push(h('div',{class:'nextrow'},h('label',{},rl,reasonIn)));
     }
-    if(st)lines.push(h('div',{class:'outcome',text:`Moves to ${stageName(st)}`+(CADENCE[st]?`, and its follow-up cadence starts.`:'.')+(dp.reason?' Open follow-ups are cleared.':'')+(dp.k==='never'?' Labeled Never reached. No agent email.':'')+(dp.k==='fellthrough'?' The contract dates and Real Deal checklist are cleared, and you pick a new Home Search pace. No agent email.':'')+(dp.k==='funded'?(!d.closeDate||d.closeDate>dayStr(new Date())?' Close date set to today.':'')+' Open follow-ups are cleared. The thank-you email to the seller’s agent goes on Suzanne’s list 3 days from today.':'')}));
+    if(st&&!dp.dest)lines.push(h('div',{class:'outcome',text:`Moves to ${stageName(st)}`+(CADENCE[st]?`, and its follow-up cadence starts.`:'.')+(dp.reason?' Open follow-ups are cleared.':'')+(dp.k==='never'?' Labeled Never reached. No agent email.':'')+(dp.k==='funded'?(!d.closeDate||d.closeDate>dayStr(new Date())?' Close date set to today.':'')+' Open follow-ups are cleared. The thank-you email to the seller’s agent goes on Suzanne’s list 3 days from today.':'')}));
     let preT='',preD='';
     const nx=(!st&&(dp.next==='cadence'||dp.next==='optional'))?nextAfterLog(d,item):null;
     if(nx&&dp.next==='optional')lines.push(h('div',{class:'note',text:`Next up: ${nx.title} · ${fmtDue(nx.due)}. Add a follow-up below to replace the cadence.`}));
@@ -1283,6 +1308,7 @@ function logCard(d){
     const t=titleIn?titleIn.value.trim():'';const dv=dueIn?dueIn.value:'';
     if(dp.next&&dp.next.pick&&!dv){err.textContent='Pick the date and time they asked you to call back.';return;}
     if(t&&!dv){err.textContent='Add a date and time for the next follow-up.';return;}
+    if(dp.dest&&!(reasonIn&&reasonIn.value)){err.textContent='Pick where the file goes.';return;}
     if(dp.reason&&!(reasonIn&&reasonIn.value)){err.textContent=dp.k==='dead'?'Pick why it’s not moving forward.':'Pick why the file canceled.';return;}
     const nb=document.getElementById('lg-agent-'+d.id);
     saveLog(d,item,dp,note.value.trim(),t,dv?new Date(dv).toISOString():null,!!(nb&&nb.checked),reasonIn?reasonIn.value:'');
@@ -1347,7 +1373,7 @@ function drawerView(){
       h('div',{class:'mgroup',text:stageName(g)}),
       ...MILESTONES.filter(m=>m.g===g).map(m=>{const i=msInfo(d,m);if(i.skipped)return null;const ds=i.done?'':dueState(i.due);
         return h('div',{class:'mrow '+(i.done?'done':ds)},
-          h('input',{type:'checkbox',id:`ms-${m.k}`,checked:i.done,'aria-label':m.l,onchange:e=>m.k==='fundConf'&&e.target.checked&&d.stage==='realdeal'?askFunded(d):setMs(d,m.k,e.target.checked?{done:true,doneAt:nowIso(),doneBy:S.me}:{done:false,doneAt:null,doneBy:null})}),
+          h('input',{type:'checkbox',id:`ms-${m.k}`,checked:i.done,'aria-label':m.l,onchange:e=>m.k==='fundConf'&&e.target.checked&&d.stage==='realdeal'?askFunded(d):m.k==='review'&&e.target.checked&&!((d.milestones||{}).lock||{}).done?(e.target.checked=false,openLog({deal:d,type:'ms',id:'review'}),toast('Lock the rate or schedule the call to lock it')):setMs(d,m.k,e.target.checked?{done:true,doneAt:nowIso(),doneBy:S.me}:{done:false,doneAt:null,doneBy:null})}),
           h('div',{class:'l'},m.l,h('small',{text:(m.field&&d[m.field]?`${fmtDay(d[m.field])} · `:'')+(i.done?'Done '+new Date(i.doneAt).toLocaleDateString([], {month:'short',day:'numeric'}):(i.due?(ds==='late'?'Past due · ':'Due ')+fmtDue(i.due):(i.nofield?'Add the date under Loan to get a reminder':i.waiting?'Starts when the step before it is checked off':i.waitFunded?'Goes on the list 3 days after the file funds':m.k==='fundConf'?'Shows up the day after the close date':m.k2!=null?'Due date set from close date':'No due date')))+(m.daily&&!i.done&&i.due?' · reminds daily until done':'')})),
           teamSelect(i.owner,v=>setMs(d,m.k,{owner:v}),`ms-owner-${m.k}`),
           h('input',{type:'date',id:`ms-due-${m.k}`,'aria-label':'Due date for '+m.l,value:i.due?dayStr(new Date(i.due)):'',onchange:e=>setMs(d,m.k,{due:e.target.value?atNine(parseDay(e.target.value),0).toISOString():null})}));
