@@ -198,6 +198,7 @@ a.smsbtn{display:block;text-align:center;padding:12px;font-size:17px;text-decora
 .rowlink{border:0;background:none;padding:0;font-weight:700;color:var(--ink);text-align:left;cursor:pointer}
 .rowlink:hover{color:var(--accent);text-decoration:underline}
 .sec.log{border:2px solid var(--accent);display:grid;gap:12px}
+.sec.contractbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border:1px dashed var(--accent)}
 .loghead{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;align-items:flex-start}
 .eyebrow{font:700 11px/1 var(--body);letter-spacing:.8px;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
 .logtitle{font:400 26px/1.05 var(--display);letter-spacing:.4px;color:var(--heading)}
@@ -391,6 +392,7 @@ const MILESTONES=[
   {k:'discSent',g:'realdeal',l:'Disclosures sent',r:'partner',after:'review'},
   {k:'title',g:'realdeal',l:'Title ordered',r:'partner',after:'review',daily:1},
   {k:'hoi',g:'realdeal',l:'Homeowners insurance ordered',r:'partner',after:'review',daily:1},
+  {k:'apprLink',g:'realdeal',l:'Appraisal payment link sent',r:'partner',after:'review',daily:1,piw:1},
   {k:'apprOrd',g:'realdeal',l:'Appraisal ordered',r:'partner',after:'review',daily:1,piw:1},
   {k:'ops2',g:'realdeal',l:'File submitted to OPS',r:'partner',after:'review'},
   {k:'discRec',g:'realdeal',l:'Disclosures received',r:'partner',nodue:1},
@@ -404,7 +406,9 @@ const MILESTONES=[
   {k:'ctc',g:'realdeal',l:'Clear to close',r:'partner',nodue:1},
   {k:'cal',g:'realdeal',l:'Closing on calendar',r:'partner',k2:-7,daily:1},
   {k:'confirm',g:'realdeal',l:'Closing confirmed with agent, title and borrower',r:'lo',k2:-2},
-  {k:'coupon',g:'realdeal',l:'Email to listing agent with coupon (7 days after closing)',r:'partner',k2:7,post:1},
+  // The day after closing (next business day on a weekend): Jason confirms it funded. Nothing moves on its own.
+  {k:'fundConf',g:'realdeal',l:'Confirm funded (day after closing)',r:'lo',k2:1},
+  {k:'coupon',g:'realdeal',l:'Thank-you email to seller’s agent with coupon (3 days after funded)',r:'partner',funded:3,post:1},
 ];
 const MS_STAGES=['prequal','preapproval','realdeal'];
 const stageIdx=k=>STAGES.findIndex(s=>s.k===k);
@@ -458,6 +462,7 @@ function callOrText(p){
 }
 function telLink(p,cls){const href=telHref(p);if(!href)return h('span',{text:p||''});return h('a',{class:'tel'+(cls?' '+cls:''),href,title:'Call or text '+fmtPhone(p),onclick:e=>{e.stopPropagation();if(isPhone()){e.preventDefault();callOrText(p);}},text:fmtPhone(p)});}
 function fmtPhone(p){const d=String(p||'').replace(/\D/g,'').replace(/^1(?=\d{10}$)/,'');return d.length===10?`(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`:(p||'');}
+function fmtMoney(v){const n=Number(String(v||'').replace(/[^0-9.]/g,''));return v&&isFinite(n)&&n>0?'$'+Math.round(n).toLocaleString('en-US'):'';}
 function atNine(base,days){const d=new Date(base);d.setDate(d.getDate()+days);d.setHours(9,0,0,0);return d;}
 // Quiet hours: weeknights 8 PM to 9 AM, and the weekend (Friday 8 PM to Monday 9 AM).
 // Automatic follow-ups never land in quiet hours; a time you or Suzanne pick by hand is kept as is.
@@ -504,6 +509,8 @@ function msInfo(deal,m){
   if(!due&&m.asap){const sd=(deal.stageDates||{})[m.g];due=sd||(deal.contractDate?atNine(parseDay(deal.contractDate),0).toISOString():null);}
   if(!due&&m.after){const pre=(deal.milestones||{})[m.after]||{};due=pre.done?(pre.doneAt||nowIso()):null;
     return {done:!!st.done,doneAt:st.doneAt||null,owner:st.owner||roleUid(m.r),due,skipped:!!(m.piw&&deal.piw),waiting:!pre.done};}
+  if(!due&&m.funded!=null){const fd=deal.fundedAt?new Date(deal.fundedAt):(deal.stage==='closed'&&deal.closeDate?parseDay(deal.closeDate):null);
+    return {done:!!st.done,doneAt:st.doneAt||null,owner:st.owner||roleUid(m.r),due:fd?atNine(fd,m.funded).toISOString():null,skipped:false,waitFunded:!fd};}
   if(!due&&m.k==='apprRec'&&deal.apprDue)due=atNine(parseDay(deal.apprDue),0).toISOString();
   if(!due){
     if(m.c!=null){const b=msBase(deal,m.g);if(b)due=atNine(b,m.c).toISOString();}
@@ -760,11 +767,13 @@ function completeItem(it){
   const stamp={done:true,doneAt:nowIso(),doneBy:S.me};
   if(it.type==='stale'){openLog(it);toast('Log a contact to clear this one');return;}
   if(it.type==='task')setTask(it.deal,it.id,stamp);
+  else if(it.type==='ms'&&it.id==='fundConf'){askFunded(it.deal);return;}
   else if(it.type==='ms'&&it.id==='pace'){S.open=it.deal.id;S.log=null;render();toast('Pick High, Medium or Low to start Home Search follow-ups');return;}
   else if(it.type==='ms')setMs(it.deal,it.id,stamp);
   else queue(it.id,()=>S.db.doc(genPath(it.task)).update(stamp).catch(writeErr));
   toast('Marked done');
 }
+function askFunded(d){S.open=d.id;S.log={dealId:d.id,type:'ms',id:'fundConf',dispo:null};render();toast('Confirm it funded at the top of the file');}
 
 /* ---------- subscriptions ---------- */
 function subscribeLane(lane){
@@ -1025,6 +1034,8 @@ function nextAfterLog(d,item){
 function logTarget(d){
   const open=openItemsFor(d).sort(byDue);
   if(S.log&&S.log.dealId===d.id&&S.log.id){const f=open.find(i=>i.type===S.log.type&&i.id===S.log.id);if(f)return f;}
+  // Once closing day has passed, confirming it funded comes first
+  const fc=open.find(i=>i.type==='ms'&&i.id==='fundConf'&&new Date(i.due)<=new Date());if(fc)return fc;
   return open[0]||null;
 }
 function logCard(d){
@@ -1045,6 +1056,22 @@ function logCard(d){
     return h('section',{class:'sec log'},head,
       h('div',{class:'note',text:'Suzanne sent the certificate, so this file is in Home Search. Pick how often to check in with the borrower and/or agent:'}),
       h('div',{class:'logrow',style:'gap:8px;flex-wrap:wrap'},Object.entries(PACE).map(([k,v])=>h('button',{class:'btn'+(k==='medium'?' primary':''),type:'button',disabled:!S.isOwner,onclick:()=>{setPace(d,k);S.log=null;S.open=null;render();},text:`${v.l} · ${v.hint.toLowerCase()}`}))),cancelBtn);
+  }
+  if(item&&item.type==='ms'&&item.id==='fundConf'&&dk!=='canceled'&&dk!=='funded'){
+    const fk='fc-'+d.id;
+    const nd=h('input',{id:fk,'data-keep':fk,type:'date','aria-label':'New close date',min:dayStr(new Date())});
+    const fErr=h('div',{class:'err','aria-live':'polite'});
+    const fundedDp=DISPOS.find(x=>x.k==='funded');
+    return h('section',{class:'sec log'},head,
+      h('div',{class:'note',text:`This file was set to close ${d.closeDate?fmtDay(d.closeDate):'yesterday'}. Did it fund?`}),
+      h('div',{class:'logrow',style:'gap:8px;flex-wrap:wrap'},
+        h('button',{class:'btn primary',type:'button',onclick:()=>saveLog(d,item,fundedDp,'','',null,false,''),text:'Yes, it funded'})),
+      h('div',{class:'nextblock'},h('div',{class:'nextrow'},h('label',{},'Not yet? New close date',nd)),
+        h('div',{class:'note',text:'The confirm comes back the day after the new close date.'})),fErr,
+      h('div',{class:'logrow'},cancelBtn.slice(1),h('button',{class:'btn',type:'button',onclick:()=>{
+          if(!nd.value){fErr.textContent='Pick the new close date.';return;}
+          patchDeal(d,{closeDate:nd.value,notes:pqNote(d,`Closing moved to ${fmtDay(nd.value)}. Not funded yet.`)});
+          S.log=null;S.open=null;render();toast('Close date moved to '+fmtDay(nd.value));},text:'Save new close date'})));
   }
   if(item&&item.type==='ms'&&dk!=='canceled'&&dk!=='funded'){
     const mk='ms-'+d.id+'-'+item.id;
@@ -1078,7 +1105,7 @@ function logCard(d){
       reasonIn=h('select',{id:'lg-r-'+d.id,'data-keep':'lg-r-'+d.id,'aria-label':'Why the file canceled',required:true},h('option',{value:'',text:'Pick a reason'}),CANCEL_REASONS.map(r=>h('option',{value:r,text:r})));
       lines.push(h('div',{class:'nextrow'},h('label',{},'Why the file canceled',reasonIn)));
     }
-    if(st)lines.push(h('div',{class:'outcome',text:`Moves to ${stageName(st)}`+(CADENCE[st]?`, and its follow-up cadence starts.`:'.')+(dp.reason?' Open follow-ups are cleared.':'')+(dp.k==='funded'?(!d.closeDate||d.closeDate>dayStr(new Date())?' Close date set to today.':'')+' Open follow-ups are cleared; the listing-agent coupon email stays on Suzanne’s list for 7 days after closing.':'')}));
+    if(st)lines.push(h('div',{class:'outcome',text:`Moves to ${stageName(st)}`+(CADENCE[st]?`, and its follow-up cadence starts.`:'.')+(dp.reason?' Open follow-ups are cleared.':'')+(dp.k==='funded'?(!d.closeDate||d.closeDate>dayStr(new Date())?' Close date set to today.':'')+' Open follow-ups are cleared. The thank-you email to the seller’s agent goes on Suzanne’s list 3 days from today.':'')}));
     let preT='',preD='';
     const nx=(!st&&(dp.next==='cadence'||dp.next==='optional'))?nextAfterLog(d,item):null;
     if(nx&&dp.next==='optional')lines.push(h('div',{class:'note',text:`Next up: ${nx.title} · ${fmtDue(nx.due)}. Add a follow-up below to replace the cadence.`}));
@@ -1145,6 +1172,8 @@ function drawerView(){
       h('label',{},'Program',h('select',{id:'f-program',onchange:e=>patchDeal(d,{program:e.target.value})},PROGRAMS.map(p=>h('option',{value:p,selected:p===(d.program||''),text:p||'Choose…'})))),
       h('label',{class:'check'},h('input',{type:'checkbox',id:'f-piw',checked:d.piw,onchange:e=>patchDeal(d,{piw:e.target.checked})}),'Appraisal waived (PIW)'),
       d.stage==='realdeal'||d.stage==='closed'?[
+        h('label',{},'Purchase price',h('input',{id:'f-price',inputmode:'decimal',value:d.price||'',onchange:e=>patchDeal(d,{price:fmtMoney(e.target.value)})})),
+        h('label',{},'Loan amount',h('input',{id:'f-loanAmt',inputmode:'decimal',value:d.loanAmt||'',onchange:e=>patchDeal(d,{loanAmt:fmtMoney(e.target.value)})})),
         field('Contract date','contractDate','date'),
         field('Close date','closeDate','date'),
         field('Closing time','closeTime','time'),
@@ -1164,8 +1193,8 @@ function drawerView(){
       h('div',{class:'mgroup',text:stageName(g)}),
       ...MILESTONES.filter(m=>m.g===g).map(m=>{const i=msInfo(d,m);if(i.skipped)return null;const ds=i.done?'':dueState(i.due);
         return h('div',{class:'mrow '+(i.done?'done':ds)},
-          h('input',{type:'checkbox',id:`ms-${m.k}`,checked:i.done,'aria-label':m.l,onchange:e=>setMs(d,m.k,e.target.checked?{done:true,doneAt:nowIso(),doneBy:S.me}:{done:false,doneAt:null,doneBy:null})}),
-          h('div',{class:'l'},m.l,h('small',{text:(m.field&&d[m.field]?`${fmtDay(d[m.field])} · `:'')+(i.done?'Done '+new Date(i.doneAt).toLocaleDateString([], {month:'short',day:'numeric'}):(i.due?(ds==='late'?'Past due · ':'Due ')+fmtDue(i.due):(i.nofield?'Add the date under Loan to get a reminder':i.waiting?'Starts when the step before it is checked off':m.k2!=null?'Due date set from close date':'No due date')))+(m.daily&&!i.done&&i.due?' · reminds daily until done':'')})),
+          h('input',{type:'checkbox',id:`ms-${m.k}`,checked:i.done,'aria-label':m.l,onchange:e=>m.k==='fundConf'&&e.target.checked&&d.stage==='realdeal'?askFunded(d):setMs(d,m.k,e.target.checked?{done:true,doneAt:nowIso(),doneBy:S.me}:{done:false,doneAt:null,doneBy:null})}),
+          h('div',{class:'l'},m.l,h('small',{text:(m.field&&d[m.field]?`${fmtDay(d[m.field])} · `:'')+(i.done?'Done '+new Date(i.doneAt).toLocaleDateString([], {month:'short',day:'numeric'}):(i.due?(ds==='late'?'Past due · ':'Due ')+fmtDue(i.due):(i.nofield?'Add the date under Loan to get a reminder':i.waiting?'Starts when the step before it is checked off':i.waitFunded?'Goes on the list 3 days after the file funds':m.k==='fundConf'?'Shows up the day after the close date':m.k2!=null?'Due date set from close date':'No due date')))+(m.daily&&!i.done&&i.due?' · reminds daily until done':'')})),
           teamSelect(i.owner,v=>setMs(d,m.k,{owner:v}),`ms-owner-${m.k}`),
           h('input',{type:'date',id:`ms-due-${m.k}`,'aria-label':'Due date for '+m.l,value:i.due?dayStr(new Date(i.due)):'',onchange:e=>setMs(d,m.k,{due:e.target.value?atNine(parseDay(e.target.value),0).toISOString():null})}));
       })])));
@@ -1220,7 +1249,11 @@ function drawerView(){
       h('div',{class:'dh'},h('h2',{text:d.name}),h('button',{class:'x',type:'button',onclick:close,text:'Close'}),
         h('div',{class:'stagepick'},'Milestone',h('select',{id:'f-stage','aria-label':'Milestone',onchange:e=>changeStage(d,e.target.value)},ALLSTAGES.map(s=>h('option',{value:s.k,selected:s.k===d.stage,text:s.n}))),
           h('span',{text:'since '+new Date(d.stageSince).toLocaleDateString([], {month:'short',day:'numeric'})}))),
-      h('div',{class:'db'},journey(d,false),(d.stage!=='closed'&&d.stage!=='dead')||(d.stage==='closed'&&openItemsFor(d).length)?logCard(d):null,contact,loan,ms,fu,ns,foot)));
+      h('div',{class:'db'},journey(d,false),
+        (d.stage==='prequal'||d.stage==='preapproval')?h('section',{class:'sec contractbar'},
+          h('div',{},h('b',{text:'Contract came in?'}),h('div',{class:'note',text:'Enter the contract details and this file moves to Real Deal.'})),
+          h('button',{class:'btn primary',type:'button',onclick:()=>{S.contractId=d.id;S.modal='contract';render();},text:'Enter contract details'})):null,
+        (d.stage!=='closed'&&d.stage!=='dead')||(d.stage==='closed'&&openItemsFor(d).length)?logCard(d):null,contact,loan,ms,fu,ns,foot)));
 }
 async function copy(text){try{await navigator.clipboard.writeText(text);toast('Copied '+text);}catch(e){toast(text);}}
 
@@ -1236,7 +1269,7 @@ function walkView(){
     h('div',{style:'padding:16px',class:'note',text:'You walked through every Real Deal. Due dates now fill in from the contract and close dates you entered.'}))));}
   const k=x=>`w-${d.id}-${x}`;
   const inp=(label,key,type='text',full)=>h('label',{class:full?'full':null},label,h('input',{id:k(key),'data-keep':k(key),type,value:type==='tel'?fmtPhone(d[key]):(d[key]||'')}));
-  const ms=MILESTONES.filter(m=>m.g==='realdeal');
+  const ms=MILESTONES.filter(m=>m.g==='realdeal'&&m.k!=='fundConf');
   const f=h('form',{onsubmit:e=>{e.preventDefault();save(true);}},
     h('div',{class:'kv'},
       inp('Borrower name(s)','name','text',true),
@@ -1246,6 +1279,7 @@ function walkView(){
       inp('Agent phone','agentPhone','tel'),inp('Agent email','agentEmail','email',true),
       h('label',{},'Program',h('select',{id:k('program'),'data-keep':k('program')},PROGRAMS.map(p=>h('option',{value:p,selected:p===(d.program||''),text:p||'Choose…'})))),
       h('label',{class:'check'},h('input',{type:'checkbox',id:k('piw'),'data-keep':k('piw'),checked:d.piw}),'Appraisal waived (PIW)'),
+      inp('Purchase price','price'),inp('Loan amount','loanAmt'),
       inp('Contract date','contractDate','date'),inp('Close date','closeDate','date'),inp('Closing time','closeTime','time'),inp('Appraisal due (skip if PIW)','apprDue','date'),
       h('div',{class:'mgroup full',text:'Contract deadlines (reminder 2 days before)'}),
       inp('Inspection deadline','inspDate','date'),inp('Appraisal contingency','apprContDate','date'),inp('Financing contingency','finContDate','date'),inp('Rate lock expires','lockExp','date')),
@@ -1263,6 +1297,7 @@ function walkView(){
     const patch={};
     for(const key of ['name','email','agentName','agentEmail','contractDate','closeDate','closeTime','apprDue','inspDate','apprContDate','finContDate','lockExp','program']){const v=val(key);if(v!==(d[key]||''))patch[key]=v;}
     for(const key of ['phone','agentPhone']){const v=fmtPhone(val(key));if(v!==(d[key]||''))patch[key]=v;}
+    for(const key of ['price','loanAmt']){const v=fmtMoney(val(key));if(v!==(d[key]||''))patch[key]=v;}
     if(val('piw')!==!!d.piw)patch.piw=val('piw');
     if(!patch.name&&patch.name!==undefined)delete patch.name;
     const now=nowIso();const msp={};
@@ -1281,6 +1316,54 @@ function walkView(){
         h('div',{class:'dh'},h('h2',{text:d.name}),h('button',{class:'x',type:'button',onclick:close,text:'Close'}),
           h('div',{class:'stagepick',text:`Real Deal ${w.i+1} of ${w.ids.length}`})),
         h('div',{class:'meter',style:'border-radius:0','aria-hidden':'true'},h('i',{style:`width:${Math.round(100*(w.i)/w.ids.length)}%`})),
+        f)));
+}
+
+/* ---------- contract details: PreQual / PreApproved -> Real Deal ---------- */
+const CONTRACT_CHECKS=[['hoi','HOI ordered'],['title','Title ordered'],['apprLink','Appraisal payment link sent'],['apprOrd','Appraisal ordered']];
+function contractView(){
+  const d=findDeal(S.contractId);
+  const close=()=>{S.modal=null;S.contractId=null;render();};
+  if(!d){S.modal=null;return h('div');}
+  const k=x=>`ct-${d.id}-${x}`;
+  const inp=(label,key,type,attrs)=>h('label',{},label,h('input',Object.assign({id:k(key),'data-keep':k(key),type:type||'text'},attrs||{})));
+  const err=h('div',{class:'err','aria-live':'polite'});
+  const emailAgent=S.isOwner&&d.agentEmail;
+  const f=h('form',{onsubmit:e=>{e.preventDefault();
+      const val=x=>{const el=f.querySelector('#'+CSS.escape(k(x)));return el?(el.type==='checkbox'?el.checked:el.value.trim()):'';};
+      const closeDate=val('close');
+      if(!closeDate){err.textContent='Add the closing date. The funded confirm and closing reminders run off it.';return;}
+      const now=nowIso();
+      const patch=Object.assign(stagePatch(d,'realdeal',clone(d.tasks||[])),{closeDate,contractDate:dayStr(new Date())});
+      const price=fmtMoney(val('price')),loanAmt=fmtMoney(val('loan'));
+      if(price)patch.price=price;if(loanAmt)patch.loanAmt=loanAmt;
+      const msp={},done=[];
+      for(const [mk,l] of CONTRACT_CHECKS)if(val(mk)){msp[mk]=Object.assign({},(d.milestones||{})[mk]||{},{done:true,doneAt:now,doneBy:S.me});done.push(l);}
+      if(done.length)patch.milestones=msp;
+      const note=val('note');
+      const summary=['Contract details entered. Moved to Real Deal.',price&&'Price '+price,loanAmt&&'Loan '+loanAmt,'Closing '+fmtDay(closeDate),done.length&&'Done: '+done.join(', ')].filter(Boolean).join(' · ');
+      const notes=clone(d.notes||[]);notes.push({at:now,by:S.me,text:summary+(note?' - '+note:'')});patch.notes=notes.slice(-200);
+      const send=emailAgent&&val('agent');
+      patchDeal(d,patch);
+      S.modal=null;S.contractId=null;S.open=null;S.log=null;render();toast(`${d.name} moved to Real Deal`);
+      if(send)setTimeout(()=>sendAgentUpdate(d,'contract',''),600);
+    }},
+    h('div',{class:'kv'},
+      inp('Purchase price','price','text',{inputmode:'decimal',placeholder:'$'}),
+      inp('Loan amount','loan','text',{inputmode:'decimal',placeholder:'$'}),
+      inp('Closing date (required)','close','date',{required:true})),
+    h('div',{class:'mgroup',text:'Already done? Check it off'}),
+    h('div',{class:'walkms'},CONTRACT_CHECKS.map(([mk,l])=>h('label',{class:'check'},h('input',{type:'checkbox',id:k(mk),'data-keep':k(mk)}),l))),
+    h('label',{class:'full',style:'display:grid;gap:3px;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px'},'Notes (optional)',h('textarea',{id:k('note'),'data-keep':k('note')})),
+    emailAgent?h('label',{class:'check'},h('input',{type:'checkbox',id:k('agent'),'data-keep':k('agent'),checked:true}),`Email ${d.agentName||'the agent'} an update (under contract)`):null,
+    err,
+    h('div',{class:'foot'},h('button',{class:'btn',type:'button',onclick:close,text:'Cancel'}),
+      h('button',{class:'btn primary',type:'submit',text:'Save & move to Real Deal'})));
+  return h('div',{},h('div',{class:'scrim',onclick:close}),
+    h('div',{class:'modal',role:'dialog','aria-modal':'true','aria-label':'Contract details for '+d.name,onkeydown:e=>{if(e.key==='Escape')close();}},
+      h('div',{class:'box'},
+        h('div',{class:'dh'},h('h2',{text:'Contract details'}),h('button',{class:'x',type:'button',onclick:close,text:'Close'}),
+          h('div',{class:'stagepick',text:`${d.name} · ${stageName(d.stage)} → Real Deal`})),
         f)));
 }
 
@@ -1496,6 +1579,7 @@ async function createLead(v){
 }
 function modalView(){
   if(S.modal==='walk')return walkView();
+  if(S.modal==='contract')return contractView();
   if(S.modal==='added')return addedView();
   const close=()=>{S.modal=null;S.addAgent=null;render();};
   const keepVal=(id,def)=>{const el=document.getElementById(id);return el?el.value:def;};
