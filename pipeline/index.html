@@ -418,11 +418,14 @@ const MILESTONES=[
   {k:'dlAppr',g:'realdeal',l:'Appraisal contingency deadline',r:'partner',field:'apprContDate',before:2,piw:1},
   {k:'dlFin',g:'realdeal',l:'Financing contingency deadline',r:'partner',field:'finContDate',before:2},
   {k:'dlLock',g:'realdeal',l:'Rate lock expires: extend or close before',r:'lo',field:'lockExp',before:2},
-  {k:'apprRec',g:'realdeal',l:'Appraisal received',r:'partner',piw:1,nodue:1},
+  // Received checks: on the list 7 days before closing, every day until checked off
+  {k:'titleRec',g:'realdeal',l:'Title received',r:'partner',k2:-7,daily:1},
+  {k:'hoiRec',g:'realdeal',l:'Homeowners insurance received',r:'partner',k2:-7,daily:1},
+  {k:'apprRec',g:'realdeal',l:'Appraisal received',r:'partner',piw:1,k2:-7,daily:1},
   {k:'cond',g:'realdeal',l:'Conditions cleared',r:'partner',nodue:1},
-  {k:'ctc',g:'realdeal',l:'Clear to close',r:'partner',nodue:1},
+  {k:'ctc',g:'realdeal',l:'Clear to close',r:'partner',k2:-5,daily:1},
   {k:'cal',g:'realdeal',l:'Closing on calendar',r:'partner',k2:-7,daily:1},
-  {k:'confirm',g:'realdeal',l:'Closing confirmed with agent, title and borrower',r:'lo',k2:-2},
+  {k:'confirm',g:'realdeal',l:'Final numbers sent to borrower',r:'partner',k2:-2},
   // The day after closing (next business day on a weekend): Jason confirms it funded. Nothing moves on its own.
   {k:'fundConf',g:'realdeal',l:'Confirm funded (day after closing)',r:'partner',k2:1},
   {k:'coupon',g:'realdeal',l:'Thank-you email to seller’s agent with coupon (3 days after funded)',r:'partner',funded:3,post:1},
@@ -528,7 +531,7 @@ function msInfo(deal,m){
     return {done:!!st.done,doneAt:st.doneAt||null,owner:st.owner||roleUid(m.r),due,skipped:!!(m.piw&&deal.piw),waiting:!pre.done};}
   if(!due&&m.funded!=null){const fd=deal.fundedAt?new Date(deal.fundedAt):(deal.stage==='closed'&&deal.closeDate?parseDay(deal.closeDate):null);
     return {done:!!st.done,doneAt:st.doneAt||null,owner:st.owner||roleUid(m.r),due:fd?atNine(fd,m.funded).toISOString():null,skipped:false,waitFunded:!fd};}
-  if(!due&&m.k==='apprRec'&&deal.apprDue)due=atNine(parseDay(deal.apprDue),0).toISOString();
+  if(!due&&m.k==='apprRec'&&deal.apprDue){due=atNine(parseDay(deal.apprDue),0).toISOString();if(deal.closeDate){const c7=atNine(parseDay(deal.closeDate),-7).toISOString();if(c7<due)due=c7;}}
   if(!due){
     if(m.c!=null){const b=msBase(deal,m.g);if(b)due=atNine(b,m.c).toISOString();}
     else if(m.k2!=null&&deal.closeDate){due=atNine(parseDay(deal.closeDate),m.k2).toISOString();}
@@ -562,7 +565,9 @@ function openItemsFor(deal){
   const isCad=t=>t.kind!=='manual';
   for(const t of deal.tasks||[])if(!t.done&&isCad(t)&&t.due){const k=t.stage||deal.stage;if(!nextCad[k]||t.due<nextCad[k].due)nextCad[k]=t;}
   for(const t of deal.tasks||[])if(!t.done&&!(isCad(t)&&nextCad[t.stage||deal.stage]!==t)&&!(t.kind==='cadence'&&t.stage==='realdeal'&&closeEnd&&new Date(t.due).getTime()>closeEnd)){
-    const due=sameDayDue(deal,t);items.push({type:'task',deal,task:t,id:t.id,title:t.title,due:t.kind==='manual'?due:quietIso(due),owner:t.owner});}
+    const due=sameDayDue(deal,t);const it={type:'task',deal,task:t,id:t.id,title:t.title,due:t.kind==='manual'?due:quietIso(due),owner:t.owner};items.push(it);
+    // Weekly update to the buyer's agent shows on both Jason's and Suzanne's lists; either one logging it clears both
+    if(t.kind==='cadence'&&t.stage==='realdeal'&&deal.stage==='realdeal'&&partnerId()&&partnerId()!==t.owner)items.push(Object.assign({},it,{owner:partnerId(),shared:1}));}
   if(MS_STAGES.includes(deal.stage)||deal.stage==='closed')for(const m of MILESTONES){
     if(deal.stage==='closed'?!m.post:m.g!==deal.stage)continue;const i=msInfo(deal,m);
     if(i.done||i.skipped||!i.due)continue;
@@ -951,7 +956,8 @@ function dashView(){
 
 /* ---------- follow-ups view ---------- */
 function followView(){
-  const items=allItems().filter(i=>matchesWho(i.owner));
+  // Everyone view: shared items (weekly agent update, Real Deal no-contact reminder) show once
+  const items=allItems().filter(i=>matchesWho(i.owner)).filter(i=>S.who!=='all'||!(i.shared||i.id==='stale2'));
   const n=new Date(),endToday=new Date(n);endToday.setHours(23,59,59,999);
   const endTom=new Date(endToday);endTom.setDate(endTom.getDate()+1);
   const endWeek=new Date(endToday);endWeek.setDate(endWeek.getDate()+7);
