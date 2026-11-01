@@ -229,6 +229,10 @@ a.smsbtn{display:block;text-align:center;padding:12px;font-size:17px;text-decora
 .nextblock{display:grid;gap:8px;background:var(--panel-2);border-radius:3px;padding:10px}
 .outcome{font-weight:700;color:var(--heading)}
 .nextrow{display:grid;grid-template-columns:1.4fr 1fr;gap:8px}
+.nextrow.three{grid-template-columns:1.4fr 1fr .8fr}
+@media (max-width:600px){.nextrow.three{grid-template-columns:1fr}}
+.row .who select{font-size:12.5px;padding:2px 4px;margin-left:6px;max-width:130px}
+.chip.shared{background:var(--panel-2);color:var(--muted)}
 .nextrow label{display:grid;gap:3px;font-size:12px;font-weight:700;letter-spacing:.3px;color:var(--muted);text-transform:uppercase}
 .nextrow input{font-size:15px;text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink)}
 .logrow{display:flex;gap:10px;align-items:center;justify-content:flex-end}
@@ -589,7 +593,10 @@ function openItemsFor(deal){
   const wrap=wrapItem(deal);if(wrap)items.push(wrap);
   const stale=staleItem(deal,items);if(stale)items.push(stale);
   // Real Deal safety net goes to both Jason and Suzanne; logging a contact clears both
-  if(stale&&deal.stage==='realdeal'&&partnerId()&&partnerId()!==stale.owner)items.push(Object.assign({},stale,{id:'stale2',owner:partnerId()}));
+  if(stale&&deal.stage==='realdeal'&&partnerId()&&partnerId()!==stale.owner)items.push(Object.assign({},stale,{id:'stale2',owner:partnerId(),shared:1}));
+  // Items on both lists: each copy knows who else has it
+  const pair=i=>i.type+'|'+String(i.id).replace(/^stale2$/,'stale');
+  for(const i of items){const twin=items.find(j=>j!==i&&pair(j)===pair(i)&&j.owner!==i.owner);if(twin)i.sharedWith=twin.owner;}
   return items;
 }
 // Exit rule: once a stage's cadence has run its last step and nothing else is scheduled, a wrap-up item
@@ -785,7 +792,7 @@ function saveQuiet(d,item,dp,note){
   toast(dp.skip?'Skipped to '+fmtDue(skipTo().toISOString()):'Note added');
 }
 const FT_DEST={preapproval:'Back to PreApproved (still shopping)',nurture:'Nurture (not looking right now)'};
-function saveLog(d,item,dp,note,nextTitle,nextDue,notifyAgent,reason){
+function saveLog(d,item,dp,note,nextTitle,nextDue,notifyAgent,reason,nextOwner){
   if(dp.quiet)return saveQuiet(d,item,dp,note);
   const now=nowIso();let tasks=clone(d.tasks||[]);const patch={};
   if(item&&item.type==='task')tasks=tasks.map(t=>t.id===item.id?Object.assign(t,{done:true,doneAt:now,doneBy:S.me,disposition:dp.l}):t);
@@ -802,7 +809,7 @@ function saveLog(d,item,dp,note,nextTitle,nextDue,notifyAgent,reason){
   if(dp.k==='never')patch.neverReached=true;
   if(nextTitle&&nextDue&&!st){patch.tasks=patch.tasks.filter(t=>t.done||t.kind!=='cadence');}
   if(!st)patch.tasks=slideCadence(patch.tasks,d,now);
-  if(nextTitle&&nextDue)patch.tasks.push({id:uid(),title:nextTitle,due:nextDue,owner:(item&&item.owner)||S.me,done:false,kind:'manual',stage:st||d.stage});
+  if(nextTitle&&nextDue)patch.tasks.push({id:uid(),title:nextTitle,due:nextDue,owner:nextOwner||(item&&item.owner)||S.me,done:false,kind:'manual',stage:st||d.stage});
   // Nurture never runs out: once the 6-month steps are done, a touch every 90 days keeps going
   if(!st&&d.stage==='nurture'&&!patch.tasks.some(t=>!t.done&&t.due&&(t.stage||'nurture')==='nurture'))
     patch.tasks.push({id:uid(),title:'Quarterly nurture touch',due:quietShift(atNine(new Date(now),90)).toISOString(),owner:S.ownerId||S.me,done:false,kind:'cadence',stage:'nurture',from:now});
@@ -1073,6 +1080,17 @@ function followView(){
   }
   wrap.append(gw);return wrap;
 }
+const FIXED_IDS=['lock','lockgap','rdquiet','pqreview','stale','stale2','wrap','pq-app','pq-review'];
+function canAssign(it){return !(it.type==='gen'&&!S.isOwner)&&!it.shared&&!FIXED_IDS.includes(it.id)&&(it.type==='task'||it.type==='gen'||(it.type==='ms'&&MILESTONES.some(m=>m.k===it.id)));}
+async function reassign(it,owner){
+  if(!owner||owner===it.owner)return;
+  if(it.type==='task')setTask(it.deal,it.id,{owner});
+  else if(it.type==='ms')setMs(it.deal,it.id,{owner});
+  else if(it.type==='gen'){const t=it.task;const b=clone(t);delete b._lane;b.owner=owner;
+    const lane=owner;try{if(lane!==t._lane){await S.db.doc(`lanes/${lane}/tasks/${t.id}`).set(b);await S.db.doc(genPath(t)).delete();}
+      else await S.db.doc(genPath(t)).update({owner});}catch(e){writeErr(e);return;}}
+  toast('Assigned to '+nameOf(owner));
+}
 function itemRow(it){
   const ds=dueState(it.due);
   const deal=it.deal;
@@ -1088,9 +1106,11 @@ function itemRow(it){
         deal&&it.type!=='ms'&&nextMilestone(deal)&&nextMilestone(deal).next?h('span',{text:'Next status item: '+nextMilestone(deal).next.m.l}):null,
         it.type==='ms'?h('span',{class:'chip ms',text:'Status item'}):null,
         it.type==='stale'?h('span',{class:'chip stale',text:'No recent contact'}):null,
+        it.sharedWith?h('span',{class:'chip shared',text:'Also on '+firstName(it.sharedWith)+'’s list'}):null,
         deal&&deal.phone?telLink(deal.phone):null,
         deal&&deal.phone?smsLink(deal.phone):null)),
-    h('div',{class:'who'},h('span',{class:'due',text:ds==='late'?'Past due · '+fmtDue(it.due):fmtDue(it.due)}),S.who==='me'?null:nameOf(it.owner)));
+    h('div',{class:'who'},h('span',{class:'due',text:ds==='late'?'Past due · '+fmtDue(it.due):fmtDue(it.due)}),
+      team().length>1&&canAssign(it)?teamSelect(it.owner,v=>reassign(it,v),`row-owner-${it.deal?it.deal.id:'g'}-${it.id}`):(S.who==='me'?null:h('span',{text:' '+nameOf(it.owner)}))));
 }
 function addLine(){
   const tm=nextOpen(1);
@@ -1302,6 +1322,7 @@ function logCard(d){
     const mNote=h('textarea',{id:'lg-mn-'+mk,'data-keep':'lg-mn-'+mk,placeholder:'Note (optional)','aria-label':'Note'});
     const mT=h('input',{id:'lg-mt-'+mk,'data-keep':'lg-mt-'+mk,placeholder:'Next follow-up (optional)','aria-label':'Next follow-up'});
     const mD=h('input',{id:'lg-md-'+mk,'data-keep':'lg-md-'+mk,type:'datetime-local','aria-label':'Next follow-up date and time'});
+    const mO=team().length>1?h('select',{id:'lg-mo-'+mk,'data-keep':'lg-mo-'+mk,'aria-label':'Assigned to'},team().map(id=>h('option',{value:id,selected:id===(((item.id==='review'||item.id==='lock')&&!((d.milestones||{}).lock||{}).done)?S.ownerId:(item.owner||S.me)),text:nameOf(id)}))):null;
     const mErr=h('div',{class:'err','aria-live':'polite'});
     const lockStep=(item.id==='review'||item.id==='lock')&&!((d.milestones||{}).lock||{}).done;
     const lockBox=lockStep?h('input',{type:'checkbox',id:'lg-lock-'+mk,'data-keep':'lg-lock-'+mk}):null;
@@ -1313,7 +1334,7 @@ function logCard(d){
     return h('section',{class:'sec log'},head,mNote,
       lockStep?h('label',{class:'check',style:'margin:6px 0'},lockBox,'Rate locked'):null,
       lockStep?h('div',{class:'note',text:'Not locked yet? Set the date and time to call and lock below.'}):null,
-      h('div',{class:'nextblock'},h('div',{class:'nextrow'},h('label',{},'Next follow-up',mT),h('label',{},'When',mD))),mErr,
+      h('div',{class:'nextblock'},h('div',{class:'nextrow'+(mO?' three':'')},h('label',{},'Next follow-up',mT),h('label',{},'When',mD),mO?h('label',{},'Assigned to',mO):null)),mErr,
       h('div',{class:'logrow'},h('span',{class:'note',text:'Status items also check off from the list below.'}),cancelBtn,
         notYet,h('button',{class:'btn primary',type:'button',onclick:()=>{
           const t=mT.value.trim(),dv=mD.value;const locked=lockStep&&lockBox.checked;
@@ -1322,7 +1343,7 @@ function logCard(d){
           const now=nowIso();const stamp={done:true,doneAt:now,doneBy:S.me};const patch={milestones:{}};
           if(item.id!=='lock'||locked)patch.milestones[item.id]=Object.assign({},(d.milestones||{})[item.id]||{},stamp);
           if(locked)patch.milestones.lock=Object.assign({},(d.milestones||{}).lock||{},stamp);
-          if(t&&dv){const tasks=clone(d.tasks||[]);tasks.push(Object.assign({id:uid(),title:t,due:new Date(dv).toISOString(),owner:lockStep?S.ownerId:(item.owner||S.me),done:false,kind:'manual',stage:d.stage},lockStep&&!locked?{lockCall:1}:{}));patch.tasks=tasks;}
+          if(t&&dv){const tasks=clone(d.tasks||[]);tasks.push(Object.assign({id:uid(),title:t,due:new Date(dv).toISOString(),owner:mO?mO.value:(lockStep?S.ownerId:(item.owner||S.me)),done:false,kind:'manual',stage:d.stage},lockStep&&!locked?{lockCall:1}:{}));patch.tasks=tasks;}
           const n=mNote.value.trim();const notes=clone(d.notes||[]);notes.push({at:now,by:S.me,internal:1,text:'Done: '+item.title+(n?' - '+n:'')});patch.notes=notes.slice(-200);
           patchDeal(d,patch);S.log=null;S.open=null;render();toast(lockStep&&!locked?'Call to lock scheduled':'Marked done');},text:lockStep?'Save':'Mark done'})));
   }
@@ -1330,7 +1351,7 @@ function logCard(d){
   const pills=h('div',{class:'pills',role:'radiogroup','aria-label':'Disposition'},disposFor(d,item).map(x=>h('button',{type:'button',role:'radio','aria-checked':String(x.k===dk),class:'pill'+(x.k===dk?' on':'')+(x.k==='dead'||x.k==='canceled'?' bad':'')+(x.good?' good':''),onclick:()=>pick(x.k),text:x.l})));
   const kp=`${d.id}-${dk||'none'}`;
   const note=h('textarea',{id:'lg-note-'+d.id,'data-keep':'lg-note-'+d.id,placeholder:'What happened? (they said, next steps)','aria-label':'Notes'});
-  let nextBlock=null,titleIn=null,dueIn=null,reasonIn=null;
+  let nextBlock=null,titleIn=null,dueIn=null,reasonIn=null,ownerIn=null;
   if(dp&&dp.quiet){
     nextBlock=h('div',{class:'nextblock'},h('div',{class:'outcome',text:dp.skip
       ?`Pushes this follow-up to ${fmtDue(skipTo().toISOString())}. Doesn’t count as a contact, and no email goes out.`
@@ -1359,7 +1380,8 @@ function logCard(d){
     {
       titleIn=h('input',{id:'lg-t-'+kp,'data-keep':'lg-t-'+kp,value:preT,placeholder:'Next follow-up (optional)','aria-label':'Next follow-up'});
       dueIn=h('input',{id:'lg-d-'+kp,'data-keep':'lg-d-'+kp,type:'datetime-local',value:preD,'aria-label':'Next follow-up date and time',required:!!(dp.next.pick)});
-      lines.push(h('div',{class:'nextrow'},h('label',{},'Next follow-up',titleIn),h('label',{},dp.next.pick?'When they asked you to call':'When',dueIn)));
+      ownerIn=team().length>1?h('select',{id:'lg-o-'+kp,'data-keep':'lg-o-'+kp,'aria-label':'Assigned to'},team().map(id=>h('option',{value:id,selected:id===((item&&item.owner)||S.me),text:nameOf(id)}))):null;
+      lines.push(h('div',{class:'nextrow'+(ownerIn?' three':'')},h('label',{},'Next follow-up',titleIn),h('label',{},dp.next.pick?'When they asked you to call':'When',dueIn),ownerIn?h('label',{},'Assigned to',ownerIn):null));
     }
     const kind=agentUpdateKind(d.stage,st||d.stage,dp.k);
     if(kind&&S.isOwner&&d.agentEmail)lines.push(h('label',{class:'check'},h('input',{type:'checkbox',id:'lg-agent-'+d.id,'data-keep':'lg-agent-'+d.id+'-'+dk,checked:true}),`Email ${d.agentName||'the agent'} an update (${agentUpdateLabel(kind)})`));
@@ -1376,7 +1398,7 @@ function logCard(d){
     if(dp.dest&&!(reasonIn&&reasonIn.value)){err.textContent='Pick where the file goes.';return;}
     if(dp.reason&&!(reasonIn&&reasonIn.value)){err.textContent=dp.k==='dead'?'Pick why it’s not moving forward.':'Pick why the file canceled.';return;}
     const nb=document.getElementById('lg-agent-'+d.id);
-    saveLog(d,item,dp,note.value.trim(),t,dv?new Date(dv).toISOString():null,!!(nb&&nb.checked),reasonIn?reasonIn.value:'');
+    saveLog(d,item,dp,note.value.trim(),t,dv?new Date(dv).toISOString():null,!!(nb&&nb.checked),reasonIn?reasonIn.value:'',ownerIn?ownerIn.value:'');
   },text:dp?'Save':'Pick a disposition'});
   return h('section',{class:'sec log'},head,
     d.lastDisposition?h('div',{class:'note',text:`Last: ${d.lastDisposition}`+(d.lastTouchAt?' · '+new Date(d.lastTouchAt).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'')}):null,
