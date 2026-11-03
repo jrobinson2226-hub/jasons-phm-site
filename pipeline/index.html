@@ -495,6 +495,7 @@ function quietShift(d){const h=d.getHours();if(h>=20){d.setDate(d.getDate()+1);d
 function quietBack(d){const w=d.getDay();if(w===6||w===0){d.setDate(d.getDate()-(w===6?1:2));d.setHours(9,0,0,0);}return quietShift(d);}
 const quietIso=iso=>iso?quietShift(new Date(iso)).toISOString():iso;
 const nextOpen=(days)=>quietShift(atNine(new Date(),days));
+function toDayStr(d){const x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');}
 function parseDay(s){if(!s)return null;const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);}
 function dayStr(d){const z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;}
 function toLocalInput(iso){if(!iso)return '';const d=new Date(iso);const z=n=>String(n).padStart(2,'0');return `${dayStr(d)}T${z(d.getHours())}:${z(d.getMinutes())}`;}
@@ -524,6 +525,7 @@ function msBase(deal,g){
   if(g==='realdeal'&&deal.contractDate)return parseDay(deal.contractDate);
   const sd=(deal.stageDates||{})[g];return sd?new Date(sd):null;
 }
+function pushedTo(deal,m){const su=((deal.milestones||{})[m.k]||{}).skipUntil;return su&&new Date(su)>new Date()?su:null;}
 function msInfo(deal,m){
   const st=(deal.milestones||{})[m.k]||{};
   let due=st.due||null;
@@ -1342,7 +1344,25 @@ function logCard(d){
       const notes=clone(d.notes||[]);notes.push({at:now,by:S.me,internal:1,text:'Skipped: '+item.title+'. Back on the list '+fmtDue(su)+(n?' - '+n:'')});
       patchDeal(d,{milestones:{[item.id]:Object.assign({},(d.milestones||{})[item.id]||{},{skipUntil:su})},notes:notes.slice(-200)});
       S.log=null;S.open=null;render();toast('Skipped to '+fmtDue(su));},text:'Skip to tomorrow'}):null;
-    return h('section',{class:'sec log'},head,mNote,
+    // Push to date: keeps the status item open (not done) and off the list until 9 AM on the picked day.
+    // No contact logged, no email. Example: appraisal on new construction ordered closer to completion.
+    let pushBlock=null;
+    if(!lockStep){
+      const pD=h('input',{id:'lg-pd-'+mk,'data-keep':'lg-pd-'+mk,type:'date','aria-label':'Push to date',min:toDayStr(nextOpen(1))});
+      const curSu=((d.milestones||{})[item.id]||{}).skipUntil;
+      pushBlock=h('div',{class:'nextblock'},h('div',{class:'nextrow'},
+        h('label',{},'Push to date',pD),
+        h('label',{},'\u00a0',h('button',{class:'btn',type:'button',onclick:()=>{
+          if(!pD.value){mErr.textContent='Pick the date to push this status item to.';return;}
+          const su=atNine(parseDay(pD.value),0);
+          if(su.getTime()<=Date.now()){mErr.textContent='Pick a date after today.';return;}
+          const now=nowIso();const n=mNote.value.trim();
+          const notes=clone(d.notes||[]);notes.push({at:now,by:S.me,internal:1,text:'Pushed: '+item.title+' to '+fmtDue(su.toISOString())+(n?' - '+n:'')});
+          patchDeal(d,{milestones:{[item.id]:Object.assign({},(d.milestones||{})[item.id]||{},{skipUntil:su.toISOString()})},notes:notes.slice(-200)});
+          S.log=null;S.open=null;render();toast('Pushed to '+fmtDue(su.toISOString()));},text:'Push'}))),
+        h('div',{class:'note',text:curSu&&new Date(curSu)>new Date()?'Currently pushed to '+fmtDue(curSu)+'.':'Stays open (not checked off) and comes back on the list that morning. No email goes out.'}));
+    }
+    return h('section',{class:'sec log'},head,mNote,pushBlock,
       lockStep?h('label',{class:'check',style:'margin:6px 0'},lockBox,'Rate locked'):null,
       lockStep?h('div',{class:'note',text:'Not locked yet? Set the date and time to call and lock below.'}):null,
       h('div',{class:'nextblock'},h('div',{class:'nextrow'+(mO?' three':'')},h('label',{},'Next follow-up',mT),h('label',{},'When',mD),mO?h('label',{},'Assigned to',mO):null)),mErr,
@@ -1470,10 +1490,10 @@ function drawerView(){
   if(reached.length){
     ms=h('section',{class:'sec'},h('h4',{text:'Status checklist'}),h('div',{class:'mlist'},reached.map(g=>[
       h('div',{class:'mgroup',text:stageName(g)}),
-      ...MILESTONES.filter(m=>m.g===g).map(m=>{const i=msInfo(d,m);if(i.skipped)return null;const ds=i.done?'':dueState(i.due);
+      ...MILESTONES.filter(m=>m.g===g).map(m=>{const i=msInfo(d,m);if(i.skipped)return null;const ds=i.done||pushedTo(d,m)?'':dueState(i.due);
         return h('div',{class:'mrow '+(i.done?'done':ds)},
           h('input',{type:'checkbox',id:`ms-${m.k}`,checked:i.done,'aria-label':m.l,onchange:e=>m.k==='fundConf'&&e.target.checked&&d.stage==='realdeal'?askFunded(d):m.k==='review'&&e.target.checked&&!((d.milestones||{}).lock||{}).done?(e.target.checked=false,openLog({deal:d,type:'ms',id:'review'}),toast('Lock the rate or schedule the call to lock it')):setMs(d,m.k,e.target.checked?{done:true,doneAt:nowIso(),doneBy:S.me}:{done:false,doneAt:null,doneBy:null})}),
-          h('div',{class:'l'},m.l,h('small',{text:(m.field&&d[m.field]?`${fmtDay(d[m.field])} · `:'')+(i.done?'Done '+new Date(i.doneAt).toLocaleDateString([], {month:'short',day:'numeric'}):(i.due?(ds==='late'?'Past due · ':'Due ')+fmtDue(i.due):(i.nofield?'Add the date under Loan to get a reminder':i.waiting?'Starts when the step before it is checked off':i.waitFunded?'Goes on the list 3 days after the file funds':m.k==='fundConf'?'Shows up the day after the close date':m.k2!=null?'Due date set from close date':'No due date')))+(m.daily&&!i.done&&i.due?' · reminds daily until done':'')})),
+          h('div',{class:'l'},m.l,h('small',{text:(m.field&&d[m.field]?`${fmtDay(d[m.field])} · `:'')+(i.done?'Done '+new Date(i.doneAt).toLocaleDateString([], {month:'short',day:'numeric'}):(pushedTo(d,m)?'Pushed to '+fmtDue(pushedTo(d,m)):i.due?(ds==='late'?'Past due · ':'Due ')+fmtDue(i.due):(i.nofield?'Add the date under Loan to get a reminder':i.waiting?'Starts when the step before it is checked off':i.waitFunded?'Goes on the list 3 days after the file funds':m.k==='fundConf'?'Shows up the day after the close date':m.k2!=null?'Due date set from close date':'No due date')))+(m.daily&&!i.done&&i.due&&!pushedTo(d,m)?' · reminds daily until done':'')})),
           teamSelect(i.owner,v=>setMs(d,m.k,{owner:v}),`ms-owner-${m.k}`),
           h('input',{type:'date',id:`ms-due-${m.k}`,'aria-label':'Due date for '+m.l,value:i.due?dayStr(new Date(i.due)):'',onchange:e=>setMs(d,m.k,{due:e.target.value?atNine(parseDay(e.target.value),0).toISOString():null})}));
       })])));
