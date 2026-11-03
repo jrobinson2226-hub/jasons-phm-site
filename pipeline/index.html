@@ -575,7 +575,10 @@ function openItemsFor(deal){
     if(deal.stage==='closed'?!m.post:m.g!==deal.stage)continue;const i=msInfo(deal,m);
     if(i.done||i.skipped||!i.due)continue;
     const before=m.field||(m.k2!=null&&m.k2<0);
-    const mi={type:'ms',deal,ms:m,id:m.k,title:m.l,due:(before?quietBack:quietShift)(new Date(i.due)).toISOString(),owner:i.owner};items.push(mi);
+    // Skipped status item: hidden until the skip date (next business morning), then back on the list
+    const su=((deal.milestones||{})[m.k]||{}).skipUntil;
+    const mDue=su&&su>i.due?su:(before?quietBack:quietShift)(new Date(i.due)).toISOString();
+    const mi={type:'ms',deal,ms:m,id:m.k,title:m.l,due:mDue,owner:i.owner};items.push(mi);
     if(m.both&&partnerId()&&partnerId()!==S.ownerId)items.push(Object.assign({},mi,{owner:i.owner===S.ownerId?partnerId():S.ownerId,shared:1}));
   }
   // Rate lock expires before the close date: on Jason's list until the lock or close date is fixed
@@ -1331,12 +1334,20 @@ function logCard(d){
       const now=nowIso();const due=nextOpen(2).toISOString();const n=mNote.value.trim();
       const notes=clone(d.notes||[]);notes.push({at:now,by:S.me,internal:1,text:'Disclosures not received yet. Checking again '+fmtDue(due)+(n?' - '+n:'')});
       patchDeal(d,{milestones:{discRec:Object.assign({},(d.milestones||{}).discRec||{},{due})},notes:notes.slice(-200)});S.log=null;S.open=null;render();toast('Checking again '+fmtDue(due));},text:'Not yet: check in 2 days'}):null;
+    // Skip: daily status items (Title received, HOI received, Clear to close...) push to the next business morning.
+    // Not done, no contact logged, no email.
+    const msDef=MILESTONES.find(m=>m.k===item.id);
+    const skipMs=msDef&&msDef.daily&&!lockStep&&item.id!=='discRec'?h('button',{class:'btn',type:'button',onclick:()=>{
+      const now=nowIso();const su=skipTo().toISOString();const n=mNote.value.trim();
+      const notes=clone(d.notes||[]);notes.push({at:now,by:S.me,internal:1,text:'Skipped: '+item.title+'. Back on the list '+fmtDue(su)+(n?' - '+n:'')});
+      patchDeal(d,{milestones:{[item.id]:Object.assign({},(d.milestones||{})[item.id]||{},{skipUntil:su})},notes:notes.slice(-200)});
+      S.log=null;S.open=null;render();toast('Skipped to '+fmtDue(su));},text:'Skip to tomorrow'}):null;
     return h('section',{class:'sec log'},head,mNote,
       lockStep?h('label',{class:'check',style:'margin:6px 0'},lockBox,'Rate locked'):null,
       lockStep?h('div',{class:'note',text:'Not locked yet? Set the date and time to call and lock below.'}):null,
       h('div',{class:'nextblock'},h('div',{class:'nextrow'+(mO?' three':'')},h('label',{},'Next follow-up',mT),h('label',{},'When',mD),mO?h('label',{},'Assigned to',mO):null)),mErr,
       h('div',{class:'logrow'},h('span',{class:'note',text:'Status items also check off from the list below.'}),cancelBtn,
-        notYet,h('button',{class:'btn primary',type:'button',onclick:()=>{
+        notYet,skipMs,h('button',{class:'btn primary',type:'button',onclick:()=>{
           const t=mT.value.trim(),dv=mD.value;const locked=lockStep&&lockBox.checked;
           if(lockStep&&!locked&&!dv){mErr.textContent='The rate isn’t locked yet. Check Rate locked, or add the date and time to call and lock.';return;}
           if(t&&!dv&&!(lockStep&&locked)){mErr.textContent='Add a date and time for the next follow-up.';return;}
