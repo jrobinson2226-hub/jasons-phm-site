@@ -893,11 +893,11 @@ function subscribeLane(lane){
   const onErr=e=>{console.warn('lane',e);};
   const a=S.db.collection(`lanes/${lane}/deals`).onSnapshot(snap=>{
     const m=new Map();for(const d of snap.docs){if(!d.exists)continue;const v=clone(d.data());v.id=d.id;v._lane=lane;m.set(d.id,v);}
-    S.lanes[lane]=m;render();scheduleDigest();
+    S.lanes[lane]=m;renderLive();scheduleDigest();
   },onErr);
   const b=S.db.collection(`lanes/${lane}/tasks`).onSnapshot(snap=>{
     const m=new Map();for(const d of snap.docs){if(!d.exists)continue;const v=clone(d.data());v.id=d.id;v._lane=lane;m.set(d.id,v);}
-    S.gen[lane]=m;render();scheduleDigest();
+    S.gen[lane]=m;renderLive();scheduleDigest();
   },onErr);
   S.subs[lane]=[a,b];
 }
@@ -909,8 +909,15 @@ async function refreshNames(){
 }
 
 /* ---------- render: shell ---------- */
-let renderQueued=false;
-function render(){if(renderQueued)return;renderQueued=true;requestAnimationFrame(()=>{renderQueued=false;draw();});}
+let renderQueued=false,livePending=false;
+// Live data updates wait while someone is typing or picking in a field, so a save from
+// Suzanne (or our own last save) can't wipe what's being entered or close a date picker.
+function editing(){const a=document.activeElement;if(!a||!a.closest)return false;
+  if(!a.closest('#main,#layer'))return false;
+  return a.tagName==='TEXTAREA'||a.tagName==='SELECT'||(a.tagName==='INPUT'&&!['checkbox','radio','button','submit'].includes(a.type));}
+function renderLive(){if(editing()){livePending=true;return;}render();}
+document.addEventListener('focusout',()=>{if(!livePending)return;setTimeout(()=>{if(livePending&&!editing()){livePending=false;render();}},250);});
+function render(){livePending=false;if(renderQueued)return;renderQueued=true;requestAnimationFrame(()=>{renderQueued=false;draw();});}
 function keepState(root){
   const keep={};root.querySelectorAll('[data-keep]').forEach(el=>{keep[el.dataset.keep]=el.type==='checkbox'?el.checked:el.value;});
   const a=document.activeElement;return {keep,focus:a&&a.dataset&&a.dataset.keep};
@@ -925,9 +932,11 @@ function draw(){
   const td=document.getElementById('tab-dash');td.hidden=!S.isOwner;td.setAttribute('aria-pressed',String(S.view==='dash'));
   const main=document.getElementById('main'),layer=document.getElementById('layer');
   const st1=keepState(main),st2=keepState(layer);
+  const sk=(S.open||'')+'|'+(S.modal||''),sc=sk===draw.k?[...layer.querySelectorAll('.db,.modal .box')].map(el=>el.scrollTop):[],wy=window.scrollY;draw.k=sk;
   main.replaceChildren(S.blocked?blockedView():!S.ready?h('div',{class:'empty'},h('b',{text:'Loading your pipeline'}),'Borrower files and follow-ups appear here once they load.'):(S.view==='follow'?followView():S.view==='dash'&&S.isOwner?dashView():boardView()));
   layer.replaceChildren(...[S.open?drawerView():null,S.modal?modalView():null].filter(Boolean));
   restoreState(main,st1);restoreState(layer,st2);
+  layer.querySelectorAll('.db,.modal .box').forEach((el,i)=>{if(sc[i])el.scrollTop=sc[i];});if(window.scrollY!==wy)window.scrollTo(0,wy);
 }
 function blockedView(){return h('div',{class:'empty'},h('b',{text:'Sign in to use the pipeline'}),S.blocked);}
 function whoSeg(){
