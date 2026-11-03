@@ -532,8 +532,8 @@ function msInfo(deal,m){
   if(m.nodue)return {done:!!st.done,doneAt:st.doneAt||null,owner:st.owner||roleUid(m.r),due:null,skipped:!!(m.piw&&deal.piw)};
   if(!due&&m.field){const v=deal[m.field];if(!v)return {done:!!st.done,doneAt:st.doneAt||null,owner:st.owner||roleUid(m.r),due:null,skipped:!!(m.piw&&deal.piw),nofield:true};due=atNine(parseDay(v),-(m.before||0)).toISOString();}
   if(!due&&m.asap){const sd=(deal.stageDates||{})[m.g];due=sd||(deal.contractDate?atNine(parseDay(deal.contractDate),0).toISOString():null);}
-  if(!due&&m.after){const pre=(deal.milestones||{})[m.after]||{};due=pre.done?(pre.doneAt||nowIso()):null;if(due&&m.afterDays)due=quietShift(new Date(new Date(due).getTime()+m.afterDays*864e5)).toISOString();
-    return {done:!!st.done,doneAt:st.doneAt||null,owner:st.owner||roleUid(m.r),due,skipped:!!(m.piw&&deal.piw),waiting:!pre.done};}
+  if(!due&&m.after){const pre=(deal.milestones||{})[m.after]||{};due=pre.done?(pre.doneAt||nowIso()):(m.after==='review'&&pre.pushedAt?pre.pushedAt:null);if(due&&m.afterDays)due=quietShift(new Date(new Date(due).getTime()+m.afterDays*864e5)).toISOString();
+    return {done:!!st.done,doneAt:st.doneAt||null,owner:st.owner||roleUid(m.r),due,skipped:!!(m.piw&&deal.piw),waiting:!due};}
   if(!due&&m.funded!=null){const fd=deal.fundedAt?new Date(deal.fundedAt):(deal.stage==='closed'&&deal.closeDate?parseDay(deal.closeDate):null);
     return {done:!!st.done,doneAt:st.doneAt||null,owner:st.owner||roleUid(m.r),due:fd?atNine(fd,m.funded).toISOString():null,skipped:false,waitFunded:!fd};}
   if(!due&&m.k==='apprRec'&&deal.apprDue){due=atNine(parseDay(deal.apprDue),0).toISOString();if(deal.closeDate){const c7=atNine(parseDay(deal.closeDate),-7).toISOString();if(c7<due)due=c7;}}
@@ -594,7 +594,8 @@ function openItemsFor(deal){
   // Rate not locked after the review call: stays on Jason's list until it's locked or a call to lock is scheduled
   if(deal.stage==='realdeal'){const ms0=deal.milestones||{};
     if((ms0.review||{}).done&&!(ms0.lock||{}).done&&!(deal.tasks||[]).some(t=>t.lockCall&&!t.done))
-      items.push({type:'ms',deal,ms:MILESTONES.find(m=>m.k==='lock'),id:'lock',title:'Rate not locked: lock it or schedule a call to lock',due:quietShift(new Date(ms0.review.doneAt||nowIso())).toISOString(),owner:S.ownerId});}
+      {const b=quietShift(new Date(ms0.review.doneAt||nowIso())).toISOString(),su=(ms0.lock||{}).skipUntil;
+      items.push({type:'ms',deal,ms:MILESTONES.find(m=>m.k==='lock'),id:'lock',title:'Rate not locked: lock it or schedule a call to lock',due:su&&su>b?su:b,owner:S.ownerId});}}
   const wrap=wrapItem(deal);if(wrap)items.push(wrap);
   const stale=staleItem(deal,items);if(stale)items.push(stale);
   // Real Deal safety net goes to both Jason and Suzanne; logging a contact clears both
@@ -1348,15 +1349,15 @@ function logCard(d){
     // Skip: daily status items (Title received, HOI received, Clear to close...) push to the next business morning.
     // Not done, no contact logged, no email.
     const msDef=MILESTONES.find(m=>m.k===item.id);
-    const skipMs=msDef&&msDef.daily&&!lockStep&&item.id!=='discRec'?h('button',{class:'btn',type:'button',onclick:()=>{
+    const skipMs=(msDef&&msDef.daily&&!lockStep&&item.id!=='discRec')||lockStep?h('button',{class:'btn',type:'button',onclick:()=>{
       const now=nowIso();const su=skipTo().toISOString();const n=mNote.value.trim();
       const notes=clone(d.notes||[]);notes.push({at:now,by:S.me,internal:1,text:'Skipped: '+item.title+'. Back on the list '+fmtDue(su)+(n?' - '+n:'')});
-      patchDeal(d,{milestones:{[item.id]:Object.assign({},(d.milestones||{})[item.id]||{},{skipUntil:su})},notes:notes.slice(-200)});
+      patchDeal(d,{milestones:{[item.id]:Object.assign({},(d.milestones||{})[item.id]||{},{skipUntil:su},item.id==='review'&&!((d.milestones||{}).review||{}).pushedAt?{pushedAt:now}:{})},notes:notes.slice(-200)});
       S.log=null;S.open=null;render();toast('Skipped to '+fmtDue(su));},text:'Skip to tomorrow'}):null;
     // Push to date: keeps the status item open (not done) and off the list until 9 AM on the picked day.
     // No contact logged, no email. Example: appraisal on new construction ordered closer to completion.
     let pushBlock=null;
-    if(!lockStep){
+    {
       const pD=h('input',{id:'lg-pd-'+mk,'data-keep':'lg-pd-'+mk,type:'date','aria-label':'Push to date',min:toDayStr(nextOpen(1))});
       const curSu=((d.milestones||{})[item.id]||{}).skipUntil;
       pushBlock=h('div',{class:'nextblock'},h('div',{class:'nextrow'},
@@ -1367,7 +1368,7 @@ function logCard(d){
           if(su.getTime()<=Date.now()){mErr.textContent='Pick a date after today.';return;}
           const now=nowIso();const n=mNote.value.trim();
           const notes=clone(d.notes||[]);notes.push({at:now,by:S.me,internal:1,text:'Pushed: '+item.title+' to '+fmtDue(su.toISOString())+(n?' - '+n:'')});
-          patchDeal(d,{milestones:{[item.id]:Object.assign({},(d.milestones||{})[item.id]||{},{skipUntil:su.toISOString()})},notes:notes.slice(-200)});
+          patchDeal(d,{milestones:{[item.id]:Object.assign({},(d.milestones||{})[item.id]||{},{skipUntil:su.toISOString()},item.id==='review'&&!((d.milestones||{}).review||{}).pushedAt?{pushedAt:now}:{})},notes:notes.slice(-200)});
           S.log=null;S.open=null;render();toast('Pushed to '+fmtDue(su.toISOString()));},text:'Push'}))),
         h('div',{class:'note',text:curSu&&new Date(curSu)>new Date()?'Currently pushed to '+fmtDue(curSu)+'.':'Stays open (not checked off) and comes back on the list that morning. No email goes out.'}));
     }
