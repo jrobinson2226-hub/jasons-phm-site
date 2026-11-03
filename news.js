@@ -5,6 +5,12 @@
 // Keep it plain and short. Never show a rate without its APR and the full rate disclaimer.
 window.NEWS = [
   {
+    date: "2026-11-03",
+    title: "New down payment help from Habitat KC and Health Forward",
+    text: "Habitat for Humanity KC and Health Forward are offering down payment help for Kansas City homebuyers. Take the 2-minute quiz or call me at (913) 687-7247 to see if it's a fit for you!",
+    link: { url: "quiz.html", label: "Take the down payment quiz" }
+  },
+  {
     date: "2026-10-23",
     title: "New: the Rate Survival Kit",
     text: "Rates are up, but your options aren't gone. See how buydowns, our new Rate Relief+ and Rate Knockout programs, and down payment help can bring a payment down!",
