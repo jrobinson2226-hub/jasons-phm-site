@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Quiz Leaders</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+:root{--navy:#00426a;--cyan:#00aed9;--blue:#2694cf;--ink:#1c252c;--muted:#9fb6c6;--display:"Bebas Neue","Arial Narrow",sans-serif;--body:"Source Sans 3",Arial,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--navy);color:#fff;font-family:var(--body);font-size:18px;line-height:1.35}
+main{max-width:560px;margin:0 auto;padding:20px 16px 40px}
+h1{font-family:var(--display);font-weight:400;font-size:46px;line-height:1}
+h1 span{color:var(--cyan)}
+.meta{color:var(--muted);font-size:15px;margin:6px 0 20px;display:flex;justify-content:space-between;gap:10px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#3ddc84;margin-right:6px;vertical-align:1px}
+.dot.off{background:#e0a33a}
+.podium{display:grid;gap:10px}
+.p{display:flex;align-items:center;gap:14px;background:#fff;color:var(--ink);padding:14px 16px;border-left:10px solid var(--cyan)}
+.p .rk{font-family:var(--display);font-size:52px;line-height:1;color:var(--blue);width:40px;text-align:center}
+.p .nm{flex:1;font-weight:700;font-size:22px;line-height:1.15;overflow-wrap:anywhere}
+.p .sc{text-align:right;font-family:var(--display);font-size:34px;line-height:1;color:var(--navy)}
+.p .sc small{display:block;font-family:var(--body);font-size:15px;color:#56636d}
+.p.r1{border-left-color:#f2b705}.p.r1 .rk{color:#c99400}
+.p.empty{opacity:.45}
+details{margin-top:24px}
+summary{cursor:pointer;font-weight:700;color:var(--cyan)}
+table{width:100%;border-collapse:collapse;margin-top:10px;font-size:16px}
+td{padding:8px 4px;border-bottom:1px solid rgba(255,255,255,.15)}
+td.n{text-align:right;white-space:nowrap}
+.msg{background:rgba(255,255,255,.1);padding:14px;margin-top:16px;font-size:16px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Top 3 <span>live</span></h1>
+  <div class="meta"><span id="status"><span class="dot off"></span>Connecting…</span><span id="count"></span></div>
+  <div class="podium" id="podium"></div>
+  <details><summary>Everyone</summary><table id="all"></table></details>
+  <div id="msg"></div>
+</main>
+<script src="config.js"></script>
+<script>
+(function(){
+var C = window.QUIZ_CONFIG || {};
+var since = C.resultsSince ? new Date(C.resultsSince).getTime() : 0;
+var $ = function(id){return document.getElementById(id)};
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function fmt(sec){var m=Math.floor(sec/60), r=(sec-m*60).toFixed(1); return m+':'+(r<10?'0':'')+r;}
+
+function draw(rows){
+  rows.sort(function(a,b){ return b.score-a.score || a.time-b.time; });
+  var html='';
+  for (var k=0;k<3;k++){
+    var r=rows[k];
+    html += r ? '<div class="p r'+(k+1)+'"><div class="rk">'+(k+1)+'</div><div class="nm">'+esc(r.name)+'</div><div class="sc">'+r.score+'/10<small>'+fmt(r.time)+'</small></div></div>'
+              : '<div class="p empty"><div class="rk">'+(k+1)+'</div><div class="nm">Waiting…</div></div>';
+  }
+  $('podium').innerHTML = html;
+  $('count').textContent = rows.length + (rows.length===1?' player':' players');
+  $('all').innerHTML = rows.map(function(r,k){return '<tr><td>'+(k+1)+'. '+esc(r.name)+'</td><td class="n">'+r.score+'/10 · '+fmt(r.time)+'</td></tr>'}).join('');
+}
+
+window.__quizData = function(res){
+  try{
+    var out=[];
+    (res.table.rows||[]).forEach(function(row){
+      var c=row.c||[];
+      var ts=c[0]&&c[0].v, name=c[1]&&c[1].v, score=c[2]&&c[2].v, time=c[3]&&c[3].v;
+      if(name==null) return;
+      if(typeof ts==='string' && ts.indexOf('Date(')===0){
+        var p=ts.slice(5,-1).split(',').map(Number);
+        ts=new Date(p[0],p[1],p[2],p[3]||0,p[4]||0,p[5]||0).getTime();
+        if(ts<since) return;
+      }
+      out.push({name:String(name).trim(), score:Number(score)||0, time:parseFloat(time)||9999});
+    });
+    draw(out);
+    $('status').innerHTML='<span class="dot"></span>Updated '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'});
+  }catch(e){ $('status').innerHTML='<span class="dot off"></span>Couldn’t read results'; }
+};
+
+function load(){
+  var old=document.getElementById('gviz'); if(old) old.remove();
+  var s=document.createElement('script'); s.id='gviz';
+  s.src='https://docs.google.com/spreadsheets/d/'+encodeURIComponent(C.sheetId)+'/gviz/tq?tqx=responseHandler:__quizData;out:json&headers=1&t='+Date.now();
+  s.onerror=function(){ $('status').innerHTML='<span class="dot off"></span>Can’t reach the results sheet'; };
+  document.body.appendChild(s);
+}
+
+if(!C.sheetId){
+  draw([]);
+  $('status').innerHTML='<span class="dot off"></span>Not connected yet';
+  $('msg').innerHTML='<div class="msg">The results sheet isn’t hooked up yet, so nothing will show here until it is.</div>';
+  return;
+}
+load(); setInterval(load, 8000);
+})();
+</script>
+</body>
+</html>
