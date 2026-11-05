@@ -10,5 +10,5 @@ window.QUIZ_CONFIG = {
   // ID of the Google Sheet linked to the form (shared "Anyone with the link can view")
   sheetId: '17P_Eruvr8TNLR-JQGbCptfVVZMKMQ48ce-Q7kiDwet4',
   // Start counting results after this moment (ISO time). Change it to reset the leaderboard.
-  resultsSince: '2026-11-01T00:00:00-06:00'
+  resultsSince: '2026-11-04T20:07:00-06:00'
 };
