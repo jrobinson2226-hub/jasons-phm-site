@@ -19,6 +19,7 @@
     else if(h.indexOf('phmloans.com/mortgageconsultant') > -1) ev = 'phm_profile_click';
     else if(/quiz\.html/.test(h)) ev = 'quiz_link_click';
     else if(/rate-survival-kit\.html/.test(h)) ev = 'rate_kit_click';
+    else if(/team\.html/.test(h)) ev = 'team_page_click';
     if(ev) try{ gtag('event', ev, {link_text:(a.textContent||'').trim().slice(0,60), page_path:location.pathname}); }catch(err){}
   }, true);
 </script>
@@ -197,6 +198,13 @@ section{padding-block:48px}
 .buyer select,.buyer input{padding:8px 10px;border:0;border-radius:3px;color:#1c252c;background:#fff;font-size:15px}
 .buyer input{width:140px;flex:0 0 140px}
 section[id]{scroll-margin-top:80px}
+/* team intro */
+.team-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:28px 48px;align-items:center}
+.team-pic{margin:0}
+.team-pic img{width:100%;height:auto;display:block;border-radius:8px;box-shadow:0 14px 34px rgba(0,30,60,.18)}
+.team-txt{display:grid;gap:14px;max-width:60ch;justify-items:start}
+.team-txt p{font-size:17px}
+@media (max-width:820px){.team-row{grid-template-columns:1fr}}
 /* family + photo bands */
 .family{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);grid-template-areas:"fam t1" "t2 cpl";gap:34px 48px;align-items:center}
 .family .fam{grid-area:fam}.family .t1{grid-area:t1}.family .t2{grid-area:t2}.family .cpl{grid-area:cpl;justify-self:center;width:min(100%,360px)}
@@ -416,7 +424,7 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
       <span class="label" style="color:#9fd6ee">Your Kansas City loan officer</span>
       <h1>Jason <span class="hi">Robinson</span></h1>
       <p class="title-line">Sr. Loan Officer · Prosperity Home Mortgage · NMLS# 1008330</p>
-      <p class="lead">I'm an 11-time President's Circle award winner and 8-time Scotsman Guide Top Originator, and I've spent more than 15 years in the mortgage business helping buyers on both sides of State Line.</p>
+      <p class="lead">My background in national lending gives me a deep toolbox. I've built a specialty working with wealth management clients whose income and assets need a closer look, and with families relocating to and from Kansas City. I'm licensed in Kansas and Missouri and offer conventional, FHA, VA, jumbo and renovation loans, plus down payment assistance for first-time buyers.</p>
       <div class="hero-cta">
         <a class="apply xl" href="https://my.phmloans.com/register?companyGuid=1f65684a-c230-4514-a95f-1c7195b50055&amp;userGuid=f8c00be5-da7f-448c-89cb-e53c61c159dd&amp;flowGuid=68b8db59-a419-4f75-9207-f2cb951e0f14&amp;branchGuid=1da1851d-0431-47b5-b3bf-2d48549547ab" target="_blank" rel="noopener">Apply now</a>
         <div class="more">
@@ -434,7 +442,6 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
         <div><b>4.9 stars</b><span>nearly 90 client reviews</span></div>
       </div>
       <div class="hero-bio">
-        <p>My background in national lending gives me a deep toolbox. I've built a specialty working with wealth management clients whose income and assets need a closer look, and with families relocating to and from Kansas City. I'm licensed in Kansas and Missouri and offer conventional, FHA, VA, jumbo and renovation loans, plus down payment assistance for first-time buyers.</p>
         <p>My clients point to fast answers, clear explanations and a low-stress process. For real estate agents, that means solid pre-approvals, steady updates and a lender who keeps the deal moving to the closing table.</p>
       </div>
     </div>
@@ -442,6 +449,18 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
 </div>
 
 <main>
+<section class="team-intro alt" id="team">
+  <div class="wrap team-row">
+    <figure class="team-pic"><img src="img/jason-suzanne.jpg" width="1000" height="563" alt="Jason Robinson and Suzanne Sanders, Sr. Loan Officers with Prosperity Home Mortgage" loading="lazy"></figure>
+    <div class="team-txt">
+      <span class="label">One team, two loan officers</span>
+      <h2>Meet <span class="hi">the team</span></h2>
+      <p>When you work with me, you get Suzanne Sanders too. Suzanne is a Sr. Loan Officer with 20 years in the mortgage business, and she helps keep every file moving from application to the closing table. Two sets of eyes on your loan, and someone always there to pick up the phone!</p>
+      <a class="btn" href="team.html">Meet the team</a>
+    </div>
+  </div>
+</section>
+
 <section id="family">
   <div class="wrap family">
     <figure class="fam"><img src="img/family.jpg" width="1400" height="1050" alt="Jason Robinson with his wife and three kids" loading="lazy"></figure>
