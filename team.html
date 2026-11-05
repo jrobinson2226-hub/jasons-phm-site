@@ -341,8 +341,10 @@ section .note{margin-top:16px}
 .fine b{color:var(--ink)}
 sup{font-size:.7em;line-height:0}
 /* team page */
-.people{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:40px 48px;align-items:start}
-@media (max-width:860px){.people{grid-template-columns:1fr}}
+.people{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:40px 48px;align-items:start}
+.person-fam{margin:0;align-self:center}
+.person-fam img{width:100%;height:auto;display:block;border-radius:8px;box-shadow:0 14px 34px rgba(0,30,60,.18)}
+@media (max-width:860px){.people{grid-template-columns:1fr}.person-fam{max-width:440px}}
 .person{border-top:3px solid var(--rule);padding-top:22px;display:grid;gap:14px;align-content:start;min-width:0}
 .person-top{display:grid;grid-template-columns:140px minmax(0,1fr);gap:20px;align-items:center}
 .person-top img{width:140px;height:140px;border-radius:50%;object-fit:cover;display:block;box-shadow:0 8px 22px rgba(0,30,60,.18)}
@@ -391,23 +393,6 @@ sup{font-size:.7em;line-height:0}
 <section>
   <div class="wrap people">
 
-    <div class="person" id="jason">
-      <div class="person-top">
-        <img src="img/headshot-square.jpg" width="360" height="360" alt="Jason Robinson">
-        <div>
-          <div class="nm">Jason Robinson</div>
-          <div class="role">Sr. Loan Officer · NMLS# 1008330</div>
-          <div class="reach">
-            <a href="tel:+19136877247">(913) 687-7247</a>
-            <a href="mailto:Jason.Robinson@phmloans.com">Jason.Robinson@phmloans.com</a>
-          </div>
-        </div>
-      </div>
-      <p>I've spent more than 15 years in the mortgage business, and my background in national lending gives me a deep toolbox. I work with everyone from first-time buyers who need down payment assistance to wealth management clients whose income and assets need a closer look, plus families relocating to and from Kansas City. I offer conventional, FHA, VA, jumbo and renovation loans.</p>
-      <p class="personal">Outside the office, I've been married 24 years and we have three kids, so most of my free time is spent in the stands at volleyball, basketball and flag football games. I'm a member of the Rotary Club of Johnson County Trailblazers, and you'll find me on the golf course or at Lake of the Ozarks whenever I can sneak away.</p>
-      <span class="lic">Licensed in Kansas and Missouri</span>
-    </div>
-
     <div class="person" id="suzanne">
       <div class="person-top">
         <img src="img/suzanne-square.jpg" width="360" height="360" alt="Suzanne Sanders">
@@ -425,6 +410,8 @@ sup{font-size:.7em;line-height:0}
       <p class="personal">Outside of work I have been happily married for 26 years and have 3 beautiful daughters! I enjoy golfing, vacationing and most importantly spending quality time with my family. Last year I became a member of the Johnson County Trailblazers Rotary Club which has given me the opportunity to give back to the community. These experiences remind me of the importance of home, family, and helping others achieve their homeownership goals.</p>
       <span class="lic">Licensed in Kansas, Missouri and Florida</span>
     </div>
+
+    <figure class="person-fam"><img src="img/suzanne-family.jpg" width="952" height="1400" alt="Suzanne Sanders with her husband and three daughters" loading="lazy"></figure>
 
   </div>
 </section>
