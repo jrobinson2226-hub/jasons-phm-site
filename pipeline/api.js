@@ -95,7 +95,11 @@
       path: path, id: path.split('/').pop(),
       get: function () { return call('get', { path: path }).then(function (j) { if (j.doc) apply([j.doc]); else apply([{ path: path, deleted: true, version: Infinity }]); return docSnap(path); }); },
       set: function (data) { return call('set', { path: path, data: data }).then(afterWrite); },
-      update: function (patch) { return call('update', { path: path, patch: patch }).then(afterWrite); },
+      update: function (patch) {
+        // Never let an update bring back a file that was moved or deleted (it would come back blank).
+        if (path.indexOf('/deals/') > 0 && !cache.has(path)) return Promise.reject(Object.assign(new Error('not_found'), { code: 'not_found' }));
+        return call('update', { path: path, patch: patch }).then(afterWrite);
+      },
       delete: function () { return call('delete', { path: path }).then(function () { var c = cache.get(path); apply([{ path: path, deleted: true, version: (c ? c.version : 0) + 1 }]); }); },
       onSnapshot: function (cb) { return listen('doc', path, cb); }
     };

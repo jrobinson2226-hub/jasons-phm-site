@@ -506,7 +506,7 @@ function fmtDue(iso){if(!iso)return 'No date';const d=new Date(iso),n=new Date()
   return d.toLocaleDateString([], {weekday:'short',month:'short',day:'numeric'})+' · '+fmtTime(d);}
 function fmtDay(s){const d=parseDay(s);return d?d.toLocaleDateString([], {weekday:'short',month:'short',day:'numeric'}):'';}
 function dueState(iso){if(!iso)return '';const d=new Date(iso),n=new Date();if(d<n)return 'late';if(sameDay(d,n))return 'today';return '';}
-function toast(msg){const t=h('div',{class:'toast',role:'status',text:msg});document.body.append(t);setTimeout(()=>t.remove(),2400);}
+function toast(msg,ms=2400){const t=h('div',{class:'toast',role:'status',text:msg});document.body.append(t);setTimeout(()=>t.remove(),ms);}
 function authorName(id){if(!id)return 'Unknown';return S.names[id]||(id===S.me?'Me':id===S.ownerId?'Loan officer':'Teammate');}
 function noteStamp(n){const d=new Date(n.at);
   return `${d.toLocaleDateString([], {weekday:'short',month:'short',day:'numeric',year:'numeric'})} · ${d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})} · ${authorName(n.by)}`;}
@@ -704,6 +704,7 @@ function queue(key,fn){const p=(S.queues[key]||Promise.resolve()).then(fn,fn);S.
 function writeErr(e){
   console.warn(e);
   if(e&&e.code==='quota_exceeded')toast('Storage is full. Archive old Dead files (Pipeline, Show Nurture & Dead) to make room.');
+  else if(e&&e.code==='not_found')toast('This file was moved or removed. Reopen it and try again.',6000);
   else if(e&&e.code==='invalid_argument')toast('That change was not allowed for your access level.');
   else toast('Could not save. Check your connection and try again.');
 }
@@ -711,8 +712,13 @@ function deepMerge(a,b){for(const [k,v] of Object.entries(b)){if(v&&typeof v==='
 function bodyOf(deal){const b=clone(deal);delete b._lane;return b;}
 function patchDeal(deal,patch){
   patch.updatedAt=nowIso();patch.updatedBy=S.me;
-  const lane=deal._lane,id=deal.id;
+  const id=deal.id;
   return queue(id,async()=>{
+    // If the file moved (e.g. to Suzanne's list) after this screen opened, the change was built on an old copy:
+    // don't save it to the old spot (that re-creates a blank file) or over the new copy.
+    const live=findDeal(id);const lane=deal._lane;
+    if(!live||live._lane!==lane){S.open=live?id:null;render();toast('This file just moved. It’s reopened: please log that again.',6000);return;}
+    deal=live;
     try{
       await S.db.doc(dealPath(lane,id)).update(patch);
       const next=deepMerge(clone(deal),patch);next._lane=lane;
@@ -893,7 +899,9 @@ function subscribeLane(lane){
   S.lanes[lane]=new Map();S.gen[lane]=new Map();
   const onErr=e=>{console.warn('lane',e);};
   const a=S.db.collection(`lanes/${lane}/deals`).onSnapshot(snap=>{
-    const m=new Map();for(const d of snap.docs){if(!d.exists)continue;const v=clone(d.data());v.id=d.id;v._lane=lane;m.set(d.id,v);}
+    const m=new Map();for(const d of snap.docs){if(!d.exists)continue;const v=clone(d.data());
+      if(!v||!v.name||!v.stage){console.warn('Skipping incomplete file',lane,d.id);continue;} // half-saved record: skip it, don't crash the page
+      v.id=d.id;v._lane=lane;m.set(d.id,v);}
     S.lanes[lane]=m;renderLive();scheduleDigest();
   },onErr);
   const b=S.db.collection(`lanes/${lane}/tasks`).onSnapshot(snap=>{

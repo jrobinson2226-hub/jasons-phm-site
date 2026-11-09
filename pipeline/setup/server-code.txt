@@ -59,7 +59,10 @@ function handle(req) {
   if (a === 'set') { need(canWrite(me, req.path)); return { ok: true, doc: writeDoc(me, req.path, function () { return req.data; }) }; }
   if (a === 'update') {
     need(canWrite(me, req.path));
-    return { ok: true, doc: writeDoc(me, req.path, function (cur) { return deepMerge(cur || {}, req.patch || {}); }) };
+    // An update never creates a record: if the file was moved or deleted, refuse instead of saving a blank copy.
+    var ex = readDoc(req.path);
+    if (!ex || ex.deleted) return { ok: false, error: 'not_found' };
+    return { ok: true, doc: writeDoc(me, req.path, function (cur) { return cur ? deepMerge(cur, req.patch || {}) : null; }) };
   }
   if (a === 'delete') { need(isOwner(me)); deleteDoc(me, req.path); return { ok: true }; }
   if (a === 'mail') return mail(me, req);
