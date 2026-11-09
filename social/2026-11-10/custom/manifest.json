@@ -1,0 +1,13 @@
+{
+ "meeting_date": "2026-11-10",
+ "note": "Hand-built 4:5 carousel (co-branded with Suzanne Sanders). Use these instead of re-rendering deck slides.",
+ "images": [
+  "https://raw.githubusercontent.com/jrobinson2226-hub/jasons-phm-site/main/social/2026-11-10/custom/01-low-appraisal.png",
+  "https://raw.githubusercontent.com/jrobinson2226-hub/jasons-phm-site/main/social/2026-11-10/custom/02-dont-panic.png",
+  "https://raw.githubusercontent.com/jrobinson2226-hub/jasons-phm-site/main/social/2026-11-10/custom/03-your-options.png",
+  "https://raw.githubusercontent.com/jrobinson2226-hub/jasons-phm-site/main/social/2026-11-10/custom/04-what-works.png",
+  "https://raw.githubusercontent.com/jrobinson2226-hub/jasons-phm-site/main/social/2026-11-10/custom/05-rov-steps.png",
+  "https://raw.githubusercontent.com/jrobinson2226-hub/jasons-phm-site/main/social/2026-11-10/custom/06-call-us.png"
+ ],
+ "caption_add_after_jason_line": "Suzanne Sanders | Sr. Loan Officer | NMLS# 1705314"
+}
