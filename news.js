@@ -5,6 +5,11 @@
 // Keep it plain and short. Never show a rate without its APR and the full rate disclaimer.
 window.NEWS = [
   {
+    date: "2026-11-10",
+    title: "Appraisal came in low? Don't panic yet",
+    text: "A low appraisal isn't always a dead deal. Call me before anyone reacts: we'll run the numbers, walk through your options, and ask the appraiser for a second look when the data supports it."
+  },
+  {
     date: "2026-11-03",
     title: "New down payment help from Habitat KC and Health Forward",
     text: "Habitat for Humanity KC and Health Forward are offering down payment help for Kansas City homebuyers. Take the 2-minute quiz or call me at (913) 687-7247 to see if it's a fit for you!",
