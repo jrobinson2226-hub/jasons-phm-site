@@ -5,6 +5,12 @@
 // Keep it plain and short. Never show a rate without its APR and the full rate disclaimer.
 window.NEWS = [
   {
+    date: "2026-11-17",
+    title: "Buyers have leverage right now",
+    text: "In a lot of markets, sellers outnumber buyers. Don't just haggle on price. Ask about seller concessions and put money back in your pocket at closing! Watch the quick video, then call me at (913) 687-7247 before you write the offer.",
+    link: { url: "https://youtube.com/shorts/2A1hZxKV_sE", label: "Watch the video" }
+  },
+  {
     date: "2026-11-10",
     title: "Appraisal came in low? Don't panic yet",
     text: "A low appraisal isn't always a dead deal. Call me before anyone reacts: we'll run the numbers, walk through your options, and ask the appraiser for a second look when the data supports it."
