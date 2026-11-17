@@ -5,6 +5,12 @@
 // Keep it plain and short. Never show a rate without its APR and the full rate disclaimer.
 window.NEWS = [
   {
+    date: "2026-11-19",
+    title: "Don't wait for rates to drop. Buy your rate down!",
+    text: "Here are 3 ways to lower your rate: a temporary 2-1 buydown, our 1-year lender-paid buydown, and a permanent buydown. Already have a quote? Ask about our $500 second opinion! Watch the quick video, then call me at (913) 687-7247.",
+    link: { url: "media/3-ways-to-buy-down-your-rate.mp4", label: "Watch the video" }
+  },
+  {
     date: "2026-11-17",
     title: "Buyers have leverage right now",
     text: "In a lot of markets, sellers outnumber buyers. Don't just haggle on price. Ask about seller concessions and put money back in your pocket at closing! Watch the quick video, then call me at (913) 687-7247 before you write the offer.",
