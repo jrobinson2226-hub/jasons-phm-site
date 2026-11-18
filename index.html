@@ -14,6 +14,7 @@
     var h = a.getAttribute('href') || '', ev = null;
     if(h.indexOf('my.phmloans.com') > -1) ev = 'apply_click';
     else if(h.indexOf('tel:') === 0) ev = 'phone_click';
+    else if(h.indexOf('sms:') === 0) ev = 'text_click';
     else if(h.indexOf('mailto:') === 0) ev = 'email_click';
     else if(h.indexOf('opentotheoffer.com') > -1) ev = 'offer_tool_click';
     else if(h.indexOf('phmloans.com/mortgageconsultant') > -1) ev = 'phm_profile_click';
@@ -157,7 +158,7 @@
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{margin:0}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;scroll-padding-bottom:80px}
 body{background:var(--ivory);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.55;-webkit-text-size-adjust:100%;overflow-x:clip;padding-bottom:68px}
 @media (min-width:900px){body{padding-bottom:0}}
 a{color:var(--navy)}
@@ -230,22 +231,23 @@ section[id],div[id]{scroll-margin-top:72px}
 .actionbar a{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:46px;border-radius:999px;font-weight:700;font-size:15px;text-decoration:none;color:var(--navy);border:1.5px solid rgba(0,66,106,.35)}
 .actionbar a svg{width:17px;height:17px}
 .actionbar a.apply{border-color:transparent;padding:0}
+body.typing .actionbar{display:none}
 @media (min-width:900px){.actionbar{display:none}}
 
 /* Hero */
 .hero{position:relative;background:var(--ivory);overflow:hidden}
-.hero .wrap{display:grid;gap:18px;padding-block:14px 30px}
-.stage{position:relative;height:232px}
-.stage .home{position:absolute;left:0;right:0;top:34px;bottom:0;border-radius:var(--r-lg);overflow:hidden;background:var(--ivory-2)}
+.hero .wrap{display:grid;gap:22px;padding-block:22px 28px}
+.stage{position:relative;order:2;height:196px}
+.stage .home{position:absolute;left:0;right:0;top:30px;bottom:0;border-radius:var(--r-lg);overflow:hidden;background:var(--ivory-2)}
 .stage .home img{width:100%;height:100%;object-fit:cover;object-position:30% 60%;display:block}
-.stage .panel{position:absolute;right:10px;bottom:0;width:46%;height:172px;background:var(--navy);border-radius:var(--r-lg) var(--r-lg) 0 0;box-shadow:0 -1px 0 rgba(255,255,255,.2),0 16px 30px rgba(0,30,50,.25)}
+.stage .panel{position:absolute;right:10px;bottom:0;width:42%;height:144px;background:var(--navy);border-radius:var(--r-lg) var(--r-lg) 0 0;box-shadow:0 0 0 5px var(--ivory)}
 .stage .panel::before{content:"";position:absolute;left:0;right:0;top:0;height:5px;border-radius:var(--r-lg) var(--r-lg) 0 0;background:var(--cyan)}
-.stage .me{position:absolute;right:calc(10px + 23% - 99px);bottom:0;height:232px;width:auto;z-index:2}
+.stage .me{position:absolute;right:calc(10px + 21% - 81px);bottom:0;height:196px;width:auto;z-index:2}
 .stage .tagline{position:absolute;left:12px;bottom:12px;z-index:3;display:grid;line-height:1.25;background:rgba(255,255,255,.95);padding:8px 12px;border-radius:12px;max-width:48%}
 .stage .tagline b{font-family:var(--display);font-weight:500;font-size:16px;color:var(--navy)}
 .stage .tagline span{font-size:12px;color:var(--muted)}
-@media (min-width:600px){.stage{height:300px}.stage .panel{height:224px;width:40%;right:28px}.stage .me{height:300px;right:calc(28px + 20% - 128px)}}
-.hero-copy{display:grid;gap:14px;align-content:start}
+@media (min-width:600px){.stage{height:280px}.stage .home{top:40px}.stage .panel{height:210px;width:38%;right:28px}.stage .me{height:280px;right:calc(28px + 19% - 116px)}}
+.hero-copy{order:1;display:grid;gap:14px;align-content:start}
 .hero h1{font-size:clamp(38px,10.4vw,80px);line-height:1;font-weight:400;letter-spacing:-.03em}
 .hero h1 em{display:block;font-style:italic;color:var(--blue)}
 .hero .lead{font-size:17.5px;color:var(--ink-2);max-width:46ch}
@@ -260,11 +262,11 @@ section[id],div[id]{scroll-margin-top:72px}
 @media (min-width:1000px){
   .hero .wrap{grid-template-columns:minmax(0,.94fr) minmax(0,1.06fr);gap:48px;align-items:end;padding-block:36px 0}
   .hero-copy{order:1;gap:20px;padding-bottom:64px}
-  .stage{order:2;height:580px;margin:0 -36px 0 0;align-self:end}
-  .stage .home{left:30%;right:0;top:0;bottom:96px;border-radius:var(--r-lg) 0 0 var(--r-lg)}
-  .stage .panel{left:0;right:auto;width:64%;height:400px;bottom:0;box-shadow:none}
-  .stage .me{left:calc(32% - 199px);right:auto;height:480px}
-  .stage .tagline{left:auto;right:36px;bottom:28px;max-width:none;padding:14px 18px;border-radius:var(--r);box-shadow:0 14px 34px rgba(0,30,50,.16)}
+  .stage{order:2;height:580px;margin:0;align-self:end}
+  .stage .home{left:26%;right:0;top:0;bottom:104px;border-radius:var(--r-lg)}
+  .stage .panel{left:0;right:auto;width:62%;height:396px;bottom:0;box-shadow:0 0 0 10px var(--ivory)}
+  .stage .me{left:calc(31% - 199px);right:auto;height:480px}
+  .stage .tagline{left:auto;right:24px;bottom:72px;max-width:none;padding:14px 18px;border-radius:var(--r);box-shadow:0 14px 34px rgba(0,30,50,.16)}
   .stage .tagline b{font-size:20px}
   .stage .tagline span{font-size:14px}
   .creds{gap:12px 28px}
@@ -367,6 +369,16 @@ section[id],div[id]{scroll-margin-top:72px}
 .share .apply,.share .btn{min-height:46px;font-size:15px;padding:10px 18px}
 .empty{border:1.5px dashed #c8d6df;border-radius:12px;padding:16px;color:var(--muted);font-size:15.5px;display:grid;gap:6px}
 .empty b{color:var(--ink)}
+
+/* Consultation invite (below the checker form) */
+.consult{margin-top:14px;display:grid;grid-template-columns:52px 1fr;gap:12px;align-items:start;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:var(--r-lg);padding:14px 16px;color:#e3f0f7}
+.consult img{width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.6)}
+.consult b{color:#fff}
+.consult-txt{display:grid;gap:8px;font-size:15.5px}
+.consult-links{display:flex;flex-wrap:wrap;gap:8px}
+.consult-links a{display:inline-flex;align-items:center;min-height:44px;padding:8px 16px;border-radius:999px;border:1.5px solid rgba(255,255,255,.55);color:#fff;font-weight:700;font-size:15px;text-decoration:none}
+.consult-links a:first-child{background:var(--cyan);border-color:var(--cyan);color:#00263d}
+@media (min-width:768px){.consult{grid-template-columns:60px 1fr auto;align-items:center;padding:16px 22px}.consult img{width:60px;height:60px}.consult-txt{grid-column:2/4;grid-template-columns:1fr auto;align-items:center;gap:16px}}
 
 /* Why Jason */
 .why-grid{display:grid;gap:26px;align-items:center}
@@ -703,16 +715,23 @@ footer a{color:#e3eef5}
               <div class="f"><label for="hh">Household size</label>
                 <select id="hh"><option value="">Choose</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></div>
               <div class="f"><label for="inc">Annual household income</label>
-                <input id="inc" type="text" inputmode="numeric" placeholder="$85,000" autocomplete="off"></div>
+                <input id="inc" type="text" inputmode="numeric" placeholder="Before taxes" autocomplete="off"></div>
               <div class="f full"><span class="pricebox" id="box-budget"><label for="budget">Budget</label>
                 <select id="budget"><option value="">Choose</option><option value="0-300000">Under $300K</option><option value="300000-450000">$300K–$450K</option><option value="450000-560000">$450K–$560K</option><option value="560000-700000">$560K–$700K</option><option value="700000-830000">$700K–$830K</option><option value="830000-">Over $830K</option></select></span>
                 <span class="pricebox" id="box-price" hidden><label for="price">List price or estimated value</label>
-                <input id="price" type="text" inputmode="numeric" placeholder="$350,000" autocomplete="off"></span></div>
+                <input id="price" type="text" inputmode="numeric" placeholder="Enter amount" autocomplete="off"></span></div>
             </div>
           </div>
         </details>
       </form>
       <p class="note">Or tap anywhere on the map. Results are a starting point, not an approval.</p>
+    </div>
+    <div class="consult">
+      <img src="img/headshot-square.jpg" width="360" height="360" alt="" loading="lazy">
+      <div class="consult-txt">
+        <p><b>Want a second set of eyes on a property?</b> Send me the address and I'll walk you through what it may qualify for and what your options look like. No pressure, just a quick conversation.</p>
+        <p class="consult-links"><a href="tel:+19136877247">Call (913) 687-7247</a><a href="sms:+19136877247">Text me</a><a href="mailto:Jason.Robinson@phmloans.com">Email Jason</a></p>
+      </div>
     </div>
     <div class="tool" id="tool">
       <div class="map-box">
@@ -1413,6 +1432,9 @@ L.Map.addInitHook(function(){ window.__phmMap = this; });</script>
   if(window.matchMedia && window.matchMedia('(min-width: 900px)').matches){
     document.querySelectorAll('#cards details, #more-story').forEach(function(d){ d.open = true; });
   }
+  // Phones: hide the Call/Text/Apply bar while someone is typing so it never covers a field or the keyboard.
+  document.addEventListener('focusin', function(ev){ if(ev.target.matches && ev.target.matches('input,select,textarea')) document.body.classList.add('typing'); });
+  document.addEventListener('focusout', function(){ document.body.classList.remove('typing'); });
   // Touch devices: the map ignores one-finger drags until the visitor taps "Tap to move the map",
   // so normal page scrolling isn't captured. Taps on the map still run the address check as before.
   var map = window.__phmMap, frame = document.querySelector('.map-frame');
