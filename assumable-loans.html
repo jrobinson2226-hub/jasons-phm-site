@@ -35,21 +35,21 @@
 <meta name="twitter:card" content="summary">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Sarabun:wght@800&family=Source+Sans+3:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..500;1,9..144,400&family=Source+Sans+3:wght@400;600;700&display=swap">
 <style>
 /* Layout: navy masthead + address search hero, then map and results side by side, program cards, agents band, About Jason, compliance footer. Square corners per PHM brand. */
 :root{
-  --navy:#00426a; --cyan:#00aed9; --blue:#2694cf;
-  --surface:#ffffff; --surface-alt:#eef4f8; --ink:#1c252c; --ink-muted:#56636d;
-  --heading:#00426a; --rule:#00426a; --line:#cfdbe4; --field:#ffffff;
-  --ok:#1f7a4d; --ok-bg:#e3f3ea; --no:#8a3b12; --no-bg:#f8e9df; --info-bg:#e6f1f8;
-  --display:"Bebas Neue","Oswald","Arial Narrow",sans-serif;
+  --navy:#183F52; --cyan:#A88B68; --blue:#73593B;
+  --surface:#ffffff; --surface-alt:#EFEAE1; --ink:#343B3D; --ink-muted:#625D55;
+  --heading:#183F52; --rule:#183F52; --line:#DDD5C8; --field:#ffffff;
+  --ok:#1f7a4d; --ok-bg:#e3f3ea; --no:#8a3b12; --no-bg:#f8e9df; --info-bg:#EDE8DF;
+  --display:"Fraunces",Georgia,"Times New Roman",serif;
   --body:"Source Sans 3","Source Sans Pro",Arial,sans-serif;
-  --name:"Sarabun","Source Sans 3",Arial,sans-serif;
+  --name:"Fraunces",Georgia,serif;
 }
-@media (prefers-color-scheme:dark){:root{
-  --surface:#0d1a24; --surface-alt:#15293a; --ink:#eef3f7; --ink-muted:#a7b5c0;
-  --heading:#8fd0f0; --rule:#2694cf; --line:#284256; --field:#0f2030;
+@media not all{:root{
+  --surface:#0d1a24; --surface-alt:#15293a; --ink:#F5F2EC; --ink-muted:#B5ADA1;
+  --heading:#D2B994; --rule:#73593B; --line:#284256; --field:#0f2030;
   --ok:#7fd3a6; --ok-bg:#143326; --no:#f0b48f; --no-bg:#3a2216; --info-bg:#132c40; color-scheme:dark}}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -67,10 +67,10 @@ p{margin:0}
 button,input,select{font:inherit}
 :focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 18px;border-radius:3px;border:0;background:var(--navy);color:#fff;font-weight:700;text-decoration:none;cursor:pointer;white-space:nowrap}
-.btn:hover{background:#00598c}
+.btn:hover{background:#12303F}
 .btn.ghost{background:transparent;color:var(--heading);border:1px solid var(--heading)}
-.btn.cyan{background:var(--cyan);color:#00263d}
-.btn.cyan:hover{background:#3cc3e6}
+.btn.cyan{background:var(--cyan);color:#15191A}
+.btn.cyan:hover{background:#9C7F5B}
 .note{font-size:13px;color:var(--ink-muted)}
 section{padding-block:48px}
 .alt{background:var(--surface-alt)}
@@ -78,8 +78,8 @@ section{padding-block:48px}
 /* masthead + hero */
 .mast{background:var(--navy);color:#fff;position:sticky;top:0;z-index:1000;box-shadow:0 2px 10px rgba(0,0,0,.18)}
 .mast-right{display:flex;align-items:center;gap:18px}
-.apply{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--cyan);color:#00263d;font-family:var(--display);font-size:24px;letter-spacing:1px;line-height:1;padding:12px 26px 10px;border-radius:3px;text-decoration:none;white-space:nowrap;box-shadow:0 0 0 3px rgba(0,174,217,.25)}
-.apply:hover{background:#3cc3e6}
+.apply{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--cyan);color:#15191A;font-family:var(--display);font-size:24px;letter-spacing:1px;line-height:1;padding:12px 26px 10px;border-radius:3px;text-decoration:none;white-space:nowrap;box-shadow:0 0 0 3px rgba(0,174,217,.25)}
+.apply:hover{background:#9C7F5B}
 .apply.xl{font-size:30px;padding:16px 34px 13px}
 .apply.full{width:100%}
 @media (max-width:640px){.mast .who{display:none}.apply{font-size:21px;padding:10px 18px 8px}}
@@ -92,14 +92,14 @@ section{padding-block:48px}
 .hero .wrap{padding-block:28px 36px;display:grid;gap:14px}
 .hero h1{color:#fff;font-size:clamp(48px,7vw,80px);line-height:.95}
 .hero h1 .hi{color:var(--cyan)}
-.hero p.lead{font-size:19px;max-width:62ch;color:#d6e6f0}
+.hero p.lead{font-size:19px;max-width:62ch;color:#E8E1D6}
 .search{display:flex;gap:10px;flex-wrap:wrap;max-width:760px;margin-top:6px}
-.search input{flex:1 1 320px;min-width:0;padding:14px 14px;border:0;border-radius:3px;font-size:17px;color:#1c252c;background:#fff}
+.search input{flex:1 1 320px;min-width:0;padding:14px 14px;border:0;border-radius:3px;font-size:17px;color:#343B3D;background:#fff}
 .search .btn{padding-inline:22px}
-.hero .note{color:#b9d3e3}
-.buyer{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;width:100%;font-size:14px;color:#d6e6f0}
+.hero .note{color:#D2C9BB}
+.buyer{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;width:100%;font-size:14px;color:#E8E1D6}
 .buyer label{font-weight:700;color:#fff}
-.buyer select,.buyer input{padding:8px 10px;border:0;border-radius:3px;color:#1c252c;background:#fff;font-size:15px}
+.buyer select,.buyer input{padding:8px 10px;border:0;border-radius:3px;color:#343B3D;background:#fff;font-size:15px}
 .buyer input{width:140px;flex:0 0 140px}
 section[id]{scroll-margin-top:80px}
 .news{border-bottom:1px solid var(--line);padding-block:26px 30px}
@@ -114,13 +114,13 @@ section[id]{scroll-margin-top:80px}
 .news-list a{font-size:14px;font-weight:700}
 .bio-hero{grid-template-columns:300px minmax(0,1fr);column-gap:44px;align-items:start}
 .bio-shot{width:100%;max-width:300px;aspect-ratio:4/5;object-fit:cover;object-position:50% 12%;display:block;border:4px solid rgba(255,255,255,.9)}
-.title-line{font-size:16px;font-weight:700;color:#9fd6ee;letter-spacing:.3px}
+.title-line{font-size:16px;font-weight:700;color:#D2B994;letter-spacing:.3px}
 .hero-facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:6px}
 .hero-facts div{border-top:2px solid var(--cyan);padding-top:8px;display:grid;gap:2px}
 .hero-facts b{font-family:var(--display);font-weight:400;font-size:28px;line-height:1;color:#fff;letter-spacing:.5px}
-.hero-facts span{font-size:13px;color:#d6e6f0}
+.hero-facts span{font-size:13px;color:#E8E1D6}
 .hero-bio{display:grid;gap:10px;max-width:70ch}
-.hero-bio p{font-size:16px;color:#d6e6f0}
+.hero-bio p{font-size:16px;color:#E8E1D6}
 @media (max-width:860px){.bio-hero{grid-template-columns:1fr}.bio-shot{max-width:200px}.hero-facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .check-intro{display:grid;gap:12px;margin-bottom:26px}
 .check-intro .lead{font-size:18px;max-width:70ch;color:var(--ink)}
@@ -128,19 +128,19 @@ section[id]{scroll-margin-top:80px}
 .check-intro .buyer{color:var(--ink-muted)}
 .check-intro .buyer label{color:var(--ink)}
 .check-intro .buyer select,.check-intro .buyer input{border:1px solid var(--line);background:var(--field);color:var(--ink)}
-.check-intro .btn.cyan{color:#00263d}
+.check-intro .btn.cyan{color:#15191A}
 .contact-wrap{display:flex;flex-wrap:wrap;gap:24px 48px;align-items:flex-end;justify-content:space-between}
 .contact-wrap .contact{min-width:260px}
 .hero .main{display:grid;gap:14px;min-width:0}
 .lo{display:grid;gap:10px;justify-items:center;text-align:center;border-top:3px solid var(--cyan);padding-top:16px;width:220px}
 .lo img{width:180px;height:180px;object-fit:cover;border-radius:50%;border:4px solid rgba(255,255,255,.9)}
 .lo b{font-family:var(--name);font-weight:800;font-size:20px;line-height:1.2}
-.lo span{font-size:14px;color:#d6e6f0}
+.lo span{font-size:14px;color:#E8E1D6}
 .lo a{color:#fff;font-weight:700}
-.lo .awards{font-size:13px;color:#9fd6ee;font-weight:700;letter-spacing:.3px}
-.lo .apply{color:#00263d;margin-top:4px}
+.lo .awards{font-size:13px;color:#D2B994;font-weight:700;letter-spacing:.3px}
+.lo .apply{color:#15191A;margin-top:4px}
 .hero-cta{display:flex;flex-wrap:wrap;align-items:center;gap:14px 18px;margin-top:4px}
-.hero-cta span{color:#d6e6f0;font-size:15px}
+.hero-cta span{color:#E8E1D6;font-size:15px}
 .hero-cta a.tel{color:#fff;font-weight:700}
 @media (max-width:820px){.hero .wrap{grid-template-columns:1fr}.lo{width:auto;grid-template-columns:96px 1fr;justify-items:start;text-align:left;align-items:center;column-gap:16px}.lo img{width:96px;height:96px;grid-row:span 5}.lo .apply{grid-column:1/-1;width:100%}}
 .hero .note a{color:#fff}
@@ -196,7 +196,7 @@ section[id]{scroll-margin-top:80px}
 @media (max-width:820px){.agent-grid{grid-template-columns:1fr}}
 .agent-grid div{border-top:2px solid var(--cyan);padding-top:12px;display:grid;gap:6px}
 .agent-grid b{font-size:17px}
-.agent-grid p{color:#d6e6f0;font-size:15px}
+.agent-grid p{color:#E8E1D6;font-size:15px}
 .agents code{background:rgba(255,255,255,.12);padding:1px 5px;font-size:13px;overflow-wrap:anywhere}
 
 /* about */
@@ -214,7 +214,7 @@ section[id]{scroll-margin-top:80px}
 .contact span{color:var(--ink)}
 .contact .logo{height:40px;width:auto;margin-top:12px;align-self:start}
 .logo-dark{display:none}
-@media (prefers-color-scheme:dark){.logo-light{display:none!important}.logo-dark{display:block!important}}
+@media not all{.logo-light{display:none!important}.logo-dark{display:block!important}}
 .cta-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
 
 footer{border-top:1px solid var(--line);padding-block:24px 36px}
@@ -230,10 +230,10 @@ footer{border-top:1px solid var(--line);padding-block:24px 36px}
 .art-hero{display:grid;gap:14px;padding-block:24px 36px!important}
 .art-hero h1{color:#fff;font-size:clamp(44px,6.4vw,74px);line-height:.95;max-width:20ch}
 .art-hero h1 .hi{color:var(--cyan)}
-.art-hero .lead{font-size:19px;max-width:66ch;color:#d6e6f0}
-.art-hero .back{color:#9fd6ee;font-weight:700;font-size:14px;text-decoration:none}
+.art-hero .lead{font-size:19px;max-width:66ch;color:#E8E1D6}
+.art-hero .back{color:#D2B994;font-weight:700;font-size:14px;text-decoration:none}
 .art-hero .back:hover{text-decoration:underline}
-.art-hero .src{font-size:12px;color:#9fbccd}
+.art-hero .src{font-size:12px;color:#C9BFAF}
 .prose{display:grid;gap:14px;max-width:760px}
 .prose p{font-size:17px}
 .sub{font-size:17px;max-width:70ch;margin:12px 0 22px}
@@ -261,11 +261,35 @@ section .note{margin-top:16px}
 @media (max-width:760px){.two{grid-template-columns:1fr}}
 .two h3{font-size:30px}
 .cta-band{display:flex;flex-wrap:wrap;gap:20px 40px;align-items:center;justify-content:space-between}
-.cta-band p{color:#d6e6f0;font-size:17px;margin-top:8px}
+.cta-band p{color:#E8E1D6;font-size:17px;margin-top:8px}
 .cta-band .cta-row{margin-top:0}
-.cta-band .apply{color:#00263d}
+.cta-band .apply{color:#15191A}
 .btn.ghost.light{color:#fff;border-color:#fff}
 .social{display:flex;gap:12px;align-items:center}.social a{display:inline-flex;width:38px;height:38px;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:50%;color:var(--heading);transition:color .15s,border-color .15s,transform .15s}.social a:hover,.social a:focus-visible{color:var(--ink);border-color:var(--heading);transform:translateY(-1px)}.social svg{width:18px;height:18px}.social.foot{margin-bottom:18px}.social.contact-social{margin-top:10px}
+
+/* 2026 warm redesign layer: matches the homepage (Fraunces display, warm ivory, bronze accents). Dark mode retired. */
+:root{--surface:#F5F2EC;--field:#ffffff;color-scheme:light}
+body{background:var(--surface)}
+h1,h2,h3{letter-spacing:-.015em;font-weight:500}
+.hi{font-style:italic;font-weight:400}
+.apply,.btn.cyan{border:1.5px solid #8F7250;box-shadow:0 6px 16px rgba(120,90,50,.22)}
+:focus-visible{outline-color:#73593B}
+/* Buttons: bold sans like the homepage, not the display serif */
+.apply{font-family:var(--body);font-weight:700;letter-spacing:0;font-size:16px;padding:12px 22px;border-radius:999px}
+.apply.xl{font-size:17px;padding:14px 28px}
+/* Page heroes: warm stone with navy type (navy is kept for the nav and the closing agents band) */
+.hero{background:#E7E0D5;color:var(--ink);border-top:0}
+.hero h1,.art-hero h1{color:var(--heading)}
+.hero h1 .hi,.art-hero h1 .hi{color:#73593B}
+.hero p.lead,.art-hero .lead,.hero-bio p,.hero-cta span,.hero-facts span{color:#464D4F}
+.hero .note,.art-hero .src{color:#625D55}
+.hero-facts b{color:var(--heading)}
+.hero-cta a.tel,.hero .note a{color:var(--heading)}
+.art-hero .back{color:#73593B}
+.jump a{border-color:rgba(24,63,82,.4);color:var(--heading);border-radius:999px}
+.jump a:hover{background:rgba(24,63,82,.06)}
+.mast .apply{color:#15191A}
+.hero figcaption{color:#625D55}
 </style>
 <!-- Metricool website analytics -->
 <script>function loadScript(a){var b=document.getElementsByTagName("head")[0],c=document.createElement("script");c.type="text/javascript",c.src="https://tracker.metricool.com/resources/be.js",c.onreadystatechange=a,c.onload=a,b.appendChild(c)}loadScript(function(){beTracker.t({hash:"e5fdc41cd864adc631cc4ae059e9cb1d"})});</script>
@@ -288,7 +312,7 @@ section .note{margin-top:16px}
 <div class="hero">
   <div class="wrap art-hero">
     <a class="back" href="./">&larr; Back to Jason's PHM Site</a>
-    <span class="label" style="color:#9fd6ee">Market update · October 2026</span>
+    <span class="label" style="color:#73593B">Market update · October 2026</span>
     <h1>Buying or selling? <span class="hi">Check for an assumable loan</span></h1>
     <p class="lead">Millions of homeowners are sitting on low-rate FHA, VA and USDA loans that a buyer can take over. If you're selling, that loan can be one of your home's best features. If you're buying, it can be a path to a lower rate than today's market. Here's what I shared with agents at this week's sales meeting.</p>
     <div class="hero-facts">
