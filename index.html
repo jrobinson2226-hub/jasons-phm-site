@@ -536,11 +536,11 @@ sup{font-size:.6em;line-height:0}
 .story{background:var(--ivory)}
 .story-grid{display:grid;gap:24px}
 @media (min-width:1000px){.story-grid{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:56px;align-items:start}}
-.collage{display:grid;grid-template-columns:1.35fr 1fr;grid-template-rows:auto auto;gap:10px;margin:0}
+.collage{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto;gap:10px;margin:0}
 .collage img{width:100%;height:100%;object-fit:cover;display:block;border-radius:var(--r)}
-.collage .a{grid-row:1/span 2;aspect-ratio:3/4}
-.collage .b{aspect-ratio:1/1}
-.collage .c{aspect-ratio:1/1;background:var(--ivory-2)}
+.collage .a{grid-column:1/span 2;aspect-ratio:4/3}
+.collage .b{aspect-ratio:3/4}
+.collage .c{position:absolute;inset:0;background:var(--ivory-2)}
 .collage .c-wrap{position:relative;border-radius:var(--r);overflow:hidden}
 .collage .c-wrap span{position:absolute;left:8px;bottom:8px;background:rgba(24,63,82,.85);color:#fff;font-size:12px;font-weight:700;padding:3px 8px;border-radius:999px}
 .facts-chips{display:flex;flex-wrap:wrap;gap:8px;list-style:none;margin:0;padding:0}
@@ -1017,7 +1017,7 @@ footer a{color:#F5F2EC}
 <section class="story" id="family" aria-labelledby="family-title">
   <div class="wrap story-grid">
     <figure class="collage">
-      <img class="a" src="img/family-800.webp" srcset="img/family-800.webp 800w, img/family-1400.webp 1400w" sizes="(max-width:1000px) 58vw, 32vw" width="800" height="600" alt="Jason Robinson with his wife and three kids" loading="lazy">
+      <img class="a" src="img/family-800.webp" srcset="img/family-800.webp 800w, img/family-1400.webp 1400w" sizes="(max-width:1000px) 94vw, 620px" width="800" height="600" alt="Jason Robinson with his wife and three kids" loading="lazy">
       <img class="b" src="img/couple-600.webp" width="600" height="800" alt="Jason Robinson and his wife" loading="lazy">
       <div class="c-wrap"><img class="c" src="img/kc-skyline-600.webp" srcset="img/kc-skyline-600.webp 600w, img/kc-skyline-900.webp 900w" sizes="(max-width:1000px) 40vw, 22vw" width="600" height="472" alt="The Liberty Memorial, Union Station and the downtown Kansas City skyline at sunset" loading="lazy"><span>Home: Kansas City</span></div>
     </figure>
