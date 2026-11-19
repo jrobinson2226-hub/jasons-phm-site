@@ -680,7 +680,22 @@ function allItems(){
 function desiredLane(deal){
   const owners=new Set(openItemsFor(deal).map(i=>i.owner));
   for(const m of S.members)if(owners.has(m.id))return m.id;
+  // Real Deals live on Suzanne's side so she can see them and use the Real Deal walkthrough (Jason still sees every file)
+  if(deal.stage==='realdeal'&&S.members.length)return partnerId();
   return S.ownerId;
+}
+// Owner only: move any Real Deal still sitting on Jason's side over to Suzanne's so it shows in her walkthrough
+S.rdMoving=new Set();
+function rdSweep(){
+  if(!S.isOwner||!S.members.length)return;
+  for(const d of allDeals()){
+    if(d.stage!=='realdeal'||S.rdMoving.has(d.id))continue;
+    const want=desiredLane(d),lane=d._lane;if(!want||want===lane)continue;
+    S.rdMoving.add(d.id);
+    queue(d.id,async()=>{const live=findDeal(d.id);if(!live||live._lane!==lane||live.stage!=='realdeal'){S.rdMoving.delete(d.id);return;}
+      try{const b=bodyOf(live);b.lane=want;await S.db.doc(dealPath(want,d.id)).set(b);await S.db.doc(dealPath(lane,d.id)).delete();}catch(e){console.warn('rdSweep',e);}
+      S.rdMoving.delete(d.id);});
+  }
 }
 // PreApproved check-in pace, set per file by Jason: High twice a week, Medium weekly, Low every 10 days (12 weeks out)
 const PACE={
@@ -2354,7 +2369,7 @@ async function init(){
   db.doc('agents/list').onSnapshot(snap=>{S.agents=snap.exists?(snap.data().list||[]):[];},e=>console.warn('agents',e));
   subscribeLane(S.me);
   S.ready=true;refreshNames();render();
-  setTimeout(pqSweep,5000);setInterval(pqSweep,30*60e3);
+  setTimeout(pqSweep,5000);setInterval(pqSweep,30*60e3);setTimeout(rdSweep,6000);setInterval(rdSweep,10*60e3);
 }
 init().catch(e=>{console.error(e);S.blocked='Something went wrong loading the pipeline. Reload the page to try again.';render();});
 })();
