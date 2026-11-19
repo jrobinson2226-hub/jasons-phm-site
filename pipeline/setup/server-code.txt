@@ -80,15 +80,17 @@ function isOwner(u) { return u.role === 'owner'; }
 function canRead(u, path) {
   path = cleanPath(path);
   if (isOwner(u)) return true;
-  return path.indexOf('lanes/' + u.uid + '/') === 0 || path.indexOf('members/') === 0 ||
+  return path.indexOf('lanes/' + u.uid + '/') === 0 || isDealPath(path) || path.indexOf('members/') === 0 ||
     path.indexOf('agents/') === 0 || path.indexOf('config/') === 0 || path === 'digest/' + u.uid;
 }
 function canWrite(u, path) {
   path = cleanPath(path);
   if (isOwner(u)) return true;
-  return path.indexOf('lanes/' + u.uid + '/') === 0 || path === 'members/' + u.uid ||
+  return path.indexOf('lanes/' + u.uid + '/') === 0 || isDealPath(path) || path === 'members/' + u.uid ||
     path === 'agents/list' || path === 'digest/' + u.uid;
 }
+// Teammates can see and edit every borrower file (whole pipeline + dashboard). Personal to-dos and deleting stay Jason-only.
+function isDealPath(path) { return /^lanes\/[^\/]+\/deals\/[^\/]+$/.test(path); }
 function cleanPath(p) {
   p = String(p || '');
   if (!/^[A-Za-z0-9_\-.~:@+]+(\/[A-Za-z0-9_\-.~:@+]+)*$/.test(p) || p.split('/').length % 2 !== 0) throw new Error('bad_path');

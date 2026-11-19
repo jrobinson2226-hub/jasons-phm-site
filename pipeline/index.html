@@ -1005,11 +1005,11 @@ function restoreState(root,st){
 function draw(){
   document.getElementById('tab-follow').setAttribute('aria-pressed',String(S.view==='follow'));
   document.getElementById('tab-board').setAttribute('aria-pressed',String(S.view==='board'));
-  const td=document.getElementById('tab-dash');td.hidden=!S.isOwner;td.setAttribute('aria-pressed',String(S.view==='dash'));
+  const td=document.getElementById('tab-dash');td.hidden=false;td.setAttribute('aria-pressed',String(S.view==='dash'));
   const main=document.getElementById('main'),layer=document.getElementById('layer');
   const st1=keepState(main),st2=keepState(layer);
   const sk=(S.open||'')+'|'+(S.modal||''),sc=sk===draw.k?[...layer.querySelectorAll('.db,.modal .box')].map(el=>el.scrollTop):[],wy=window.scrollY;draw.k=sk;
-  main.replaceChildren(S.blocked?blockedView():!S.ready?h('div',{class:'empty'},h('b',{text:'Loading your pipeline'}),'Borrower files and follow-ups appear here once they load.'):(S.view==='follow'?followView():S.view==='dash'&&S.isOwner?dashView():boardView()));
+  main.replaceChildren(S.blocked?blockedView():!S.ready?h('div',{class:'empty'},h('b',{text:'Loading your pipeline'}),'Borrower files and follow-ups appear here once they load.'):(S.view==='follow'?followView():S.view==='dash'?dashView():boardView()));
   layer.replaceChildren(...[S.open?drawerView():null,S.modal?modalView():null].filter(Boolean));
   restoreState(main,st1);restoreState(layer,st2);
   layer.querySelectorAll('.db,.modal .box').forEach((el,i)=>{if(sc[i])el.scrollTop=sc[i];});if(window.scrollY!==wy)window.scrollTo(0,wy);
@@ -2363,7 +2363,8 @@ async function init(){
   }
   db.collection('members').onSnapshot(snap=>{
     S.members=snap.docs.filter(d=>d.exists).map(d=>({id:d.id,...d.data()})).filter(m=>m.id!==S.ownerId).sort((a,b)=>String(a.joinedAt).localeCompare(String(b.joinedAt)));
-    if(S.isOwner)S.members.forEach(m=>subscribeLane(m.id));
+    // Everyone on the team sees the whole pipeline and dashboard: subscribe to Jason's files and every teammate's
+    S.members.forEach(m=>subscribeLane(m.id));if(S.ownerId)subscribeLane(S.ownerId);
     refreshNames();render();
   },e=>console.warn('members',e));
   db.doc('agents/list').onSnapshot(snap=>{S.agents=snap.exists?(snap.data().list||[]):[];},e=>console.warn('agents',e));
