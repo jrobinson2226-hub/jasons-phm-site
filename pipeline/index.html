@@ -117,6 +117,8 @@ button{cursor:pointer}
 .cev{display:block;width:100%;border:0;border-radius:2px;padding:1px 3px;font-size:11px;font-weight:700;line-height:1.35;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cev.close,.cal .legend i.close{background:var(--accent);color:var(--accent-ink)}
 .cev.appr,.cal .legend i.appr{background:var(--today-bg);color:var(--today);box-shadow:inset 0 0 0 1px var(--today)}
+.cev .tm,.cev .nm{display:block;overflow:hidden;text-overflow:ellipsis}
+.cev .tm{font-weight:600;font-size:10px;opacity:.85}
 .cev.late{box-shadow:inset 0 0 0 2px var(--late)}
 .cmore{font-size:11px;color:var(--muted);padding-left:3px}
 .clist{margin-top:12px;display:grid;gap:0;border:1px solid var(--line);border-radius:4px}
@@ -540,6 +542,9 @@ function fmtTime(d){return d.toLocaleTimeString([], {hour:'numeric',minute:'2-di
 function fmtDue(iso){if(!iso)return 'No date';const d=new Date(iso),n=new Date(),t=new Date(n);t.setDate(n.getDate()+1);
   if(sameDay(d,n))return 'Today '+fmtTime(d);if(sameDay(d,t))return 'Tomorrow '+fmtTime(d);
   return d.toLocaleDateString([], {weekday:'short',month:'short',day:'numeric'})+' · '+fmtTime(d);}
+/* closing time is stored as 24-hour HH:MM from the time picker; show it as 2:00 PM (or 2p on the calendar) */
+function fmtClock(t){const m=/^(\d{1,2}):(\d{2})/.exec(t||'');if(!m)return '';let hr=+m[1];const ap=hr>=12?'PM':'AM';hr=hr%12||12;return `${hr}:${m[2]} ${ap}`;}
+function fmtClockShort(t){const m=/^(\d{1,2}):(\d{2})/.exec(t||'');if(!m)return '';let hr=+m[1];const ap=hr>=12?'p':'a';hr=hr%12||12;return hr+(m[2]==='00'?'':':'+m[2])+ap;}
 function fmtDay(s){const d=parseDay(s);return d?d.toLocaleDateString([], {weekday:'short',month:'short',day:'numeric'}):'';}
 function dueState(iso){if(!iso)return '';const d=new Date(iso),n=new Date();if(d<n)return 'late';if(sameDay(d,n))return 'today';return '';}
 function toast(msg,ms=2400){const t=h('div',{class:'toast',role:'status',text:msg});document.body.append(t);setTimeout(()=>t.remove(),ms);}
@@ -1158,10 +1163,11 @@ function followView(){
 function calEvents(){
   const ev=[];
   for(const d of allDeals()){if(d.stage!=='realdeal')continue;
-    if(d.closeDate)ev.push({day:d.closeDate,kind:'close',deal:d,label:'Closing'+(d.closeTime?' · '+d.closeTime:'')});
+    if(d.closeDate)ev.push({day:d.closeDate,kind:'close',deal:d,label:'Closing'+(d.closeTime?' · '+fmtClock(d.closeTime):''),time:d.closeTime||''});
     if(d.apprDue&&!d.piw&&!((d.milestones||{}).apprRec||{}).done)ev.push({day:d.apprDue,kind:'appr',deal:d,label:'Appraisal due'});
   }
-  return ev.sort((a,b)=>a.day.localeCompare(b.day)||(a.kind==='close'?-1:1)||a.deal.name.localeCompare(b.deal.name));
+  // same day: closings first, earliest time first (no time set goes last), then by name
+  return ev.sort((a,b)=>a.day.localeCompare(b.day)||(a.kind===b.kind?0:a.kind==='close'?-1:1)||(a.time||'99').localeCompare(b.time||'99')||a.deal.name.localeCompare(b.deal.name));
 }
 function calShort(name){const w=String(name||'').trim().split(/\s+/);return w.length>1?w[w.length-1]:w[0]||'';}
 function calView(){
@@ -1173,7 +1179,7 @@ function calView(){
   const evs=calEvents();const byDay={};for(const e of evs)(byDay[e.day]=byDay[e.day]||[]).push(e);
   const openFile=d=>{S.open=d.id;S.log=null;render();};
   const pill=e=>{const late=e.kind==='appr'&&e.day<today;
-    return h('button',{type:'button',class:'cev '+e.kind+(late?' late':''),title:`${e.label}: ${e.deal.name}`,'aria-label':`${e.label}, ${e.deal.name}, ${fmtDay(e.day)}`,onclick:()=>openFile(e.deal),text:calShort(e.deal.name)});};
+    return h('button',{type:'button',class:'cev '+e.kind+(late?' late':''),title:`${e.label}: ${e.deal.name}`,'aria-label':`${e.label}, ${e.deal.name}, ${fmtDay(e.day)}`,onclick:()=>openFile(e.deal)},e.time?h('span',{class:'tm',text:fmtClockShort(e.time)}):null,h('span',{class:'nm',text:calShort(e.deal.name)}));};
   const grid=h('div',{class:'cgrid','aria-label':'Closings and appraisal due dates'});
   for(const dw of ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'])grid.append(h('div',{class:'dw',text:dw}));
   const start=new Date(first);start.setDate(1-first.getDay());
@@ -1193,7 +1199,7 @@ function calView(){
     h('div',{class:'legend'},h('span',{},h('i',{class:'close'}),'Closing'),h('span',{},h('i',{class:'appr'}),'Appraisal due')),
     grid,
     monthEvs.length?h('div',{class:'clist'},monthEvs.map(e=>h('button',{type:'button',class:'cr'+(e.day<today?' past':''),onclick:()=>openFile(e.deal)},
-        h('span',{class:'dt',text:fmtDay(e.day).replace(/^\w+, /,'')}),h('span',{class:'chip'+(e.kind==='close'?' rd':' stale'),text:e.kind==='close'?'Closing':'Appraisal'}),h('span',{class:'nm',text:e.deal.name}))))
+        h('span',{class:'dt',text:fmtDay(e.day).replace(/^\w+, /,'')}),h('span',{class:'chip'+(e.kind==='close'?' rd':' stale'),text:e.kind==='close'?'Closing':'Appraisal'}),h('span',{class:'nm',text:e.deal.name+(e.time?' · '+fmtClock(e.time):'')}))))
       :h('div',{class:'cnone',text:'No closings or appraisal due dates this month.'}));
 }
 const FIXED_IDS=['lock','lockgap','rdquiet','pqreview','stale','stale2','wrap','pq-app','pq-review'];
@@ -1265,7 +1271,7 @@ function boardView(){
     let list=deals.filter(d=>d.stage===s.k);
     let older=0;
     if(s.k==='closed'){const keep=list.filter(d=>new Date(d.stageSince||0).getTime()>=cutoff);older=list.length-keep.length;list=keep;}
-    list.sort((a,b)=>(!!a.pqInactive-!!b.pqInactive)||(s.k==='realdeal'?String(a.closeDate||'9').localeCompare(String(b.closeDate||'9')):String(b.updatedAt).localeCompare(String(a.updatedAt))));
+    list.sort((a,b)=>(!!a.pqInactive-!!b.pqInactive)||(s.k==='realdeal'?String(a.closeDate||'9').localeCompare(String(b.closeDate||'9'))||String(a.closeTime||'99').localeCompare(String(b.closeTime||'99')):String(b.updatedAt).localeCompare(String(a.updatedAt))));
     return {s,list,older};
   });
   // On a phone the board shows one stage at a time; this is the one picked in the chip strip
@@ -1290,7 +1296,7 @@ function cardView(d){
   return h('button',{class:'card',onclick:()=>{S.open=d.id;S.log=null;render();}},
     h('span',{class:'nm'},d.name,d.stage==='prequal'?h('span',{class:'chip ms',style:'margin-left:6px',text:pqLabel(d)}):d.stage==='preapproval'?h('span',{class:'chip ms',style:'margin-left:6px',text:paLabel(d)}):d.stage==='dead'&&d.canceledFrom?h('span',{class:'chip ms',style:'margin-left:6px',text:'Canceled'+(d.cancelReason?' · '+d.cancelReason:'')}):d.stage==='realdeal'&&d.agentName&&!d.agentEmail?h('span',{class:'chip stale',style:'margin-left:6px',text:'No agent email'}):d.stage==='dead'&&d.archived?h('span',{class:'chip ms',style:'margin-left:6px',text:'Archived'}):d.stage==='dead'&&d.deadReason?h('span',{class:'chip ms',style:'margin-left:6px',text:d.deadReason}):d.stage==='nurture'&&d.neverReached?h('span',{class:'chip ms',style:'margin-left:6px',text:'Never reached'}):null),
     h('span',{class:'ln'},h('span',{text:d.agentName?'Agent: '+d.agentName:(d.source||'')}),d._lane!==S.ownerId&&S.isOwner?h('span',{text:firstName(d._lane)}):null),
-    d.stage==='realdeal'&&d.closeDate?h('span',{class:'ln'},h('span',{text:'Closes '+fmtDay(d.closeDate)+(d.closeTime?' · '+d.closeTime:'')}),d.program?h('span',{text:d.program}):null):null,
+    d.stage==='realdeal'&&d.closeDate?h('span',{class:'ln'},h('span',{text:'Closes '+fmtDay(d.closeDate)+(d.closeTime?' · '+fmtClock(d.closeTime):'')}),d.program?h('span',{text:d.program}):null):null,
     d.stage==='realdeal'&&d.apprDue&&!d.piw&&!((d.milestones||{}).apprRec||{}).done?h('span',{class:'ln'+(dueState(atNine(parseDay(d.apprDue),0).toISOString())==='late'?' late':'')},h('span',{text:'Appraisal due '+fmtDay(d.apprDue)})):null,
     progress?h('span',{class:'ln'},h('span',{text:`${progress[0]} of ${progress[1]} status items`})):null,
     progress?h('span',{class:'meter','aria-hidden':'true'},h('i',{style:`width:${progress[1]?Math.round(100*progress[0]/progress[1]):0}%`})):null,
@@ -1842,7 +1848,8 @@ function contractView(){
       if(dAmt(val('loan'))>dAmt(val('price'))){err.textContent='The loan amount is more than the purchase price. Check the numbers.';return;}
       if(!closeDate){err.textContent='Add the closing date. The funded confirm and closing reminders run off it.';return;}
       const now=nowIso();
-      const patch=Object.assign(stagePatch(d,'realdeal',clone(d.tasks||[])),{closeDate,contractDate:dayStr(new Date())});
+      const closeTime=val('closeTime');
+      const patch=Object.assign(stagePatch(d,'realdeal',clone(d.tasks||[])),{closeDate,closeTime,contractDate:dayStr(new Date())});
       const price=fmtMoney(val('price')),loanAmt=fmtMoney(val('loan'));
       if(price)patch.price=price;if(loanAmt)patch.loanAmt=loanAmt;
       const apprDue=val('apprDue');if(apprDue)patch.apprDue=apprDue;
@@ -1850,7 +1857,7 @@ function contractView(){
       for(const [mk,l] of CONTRACT_CHECKS)if(val(mk)){msp[mk]=Object.assign({},(d.milestones||{})[mk]||{},{done:true,doneAt:now,doneBy:S.me});done.push(l);}
       if(done.length)patch.milestones=msp;
       const note=val('note');
-      const summary=['Contract details entered. Moved to Real Deal.',price&&'Price '+price,loanAmt&&'Loan '+loanAmt,'Closing '+fmtDay(closeDate),apprDue&&'Appraisal due '+fmtDay(apprDue),done.length&&'Done: '+done.join(', ')].filter(Boolean).join(' · ');
+      const summary=['Contract details entered. Moved to Real Deal.',price&&'Price '+price,loanAmt&&'Loan '+loanAmt,'Closing '+fmtDay(closeDate)+(closeTime?' at '+fmtClock(closeTime):''),apprDue&&'Appraisal due '+fmtDay(apprDue),done.length&&'Done: '+done.join(', ')].filter(Boolean).join(' · ');
       const notes=clone(d.notes||[]);notes.push({at:now,by:S.me,internal:1,text:summary+(note?' - '+note:'')});patch.notes=notes.slice(-200);
       const send=emailAgent&&val('agent');
       patchDeal(d,patch);
@@ -1862,6 +1869,7 @@ function contractView(){
       inp('Loan amount (required)','loan','text',{inputmode:'decimal',placeholder:'$',required:true,value:d.loanAmt||'',oninput:()=>showDp()}),
       dpLine,
       inp('Closing date (required)','close','date',{required:true}),
+      inp('Closing time (optional)','closeTime','time',{value:d.closeTime||'',step:900}),
       d.piw?null:inp('Appraisal due (skip if PIW)','apprDue','date',{value:d.apprDue||''})),
     h('div',{class:'mgroup',text:'Already done? Check it off'}),
     h('div',{class:'walkms'},CONTRACT_CHECKS.map(([mk,l])=>h('label',{class:'check'},h('input',{type:'checkbox',id:k(mk),'data-keep':k(mk)}),l))),
