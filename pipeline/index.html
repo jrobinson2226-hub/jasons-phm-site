@@ -630,7 +630,9 @@ function openItemsFor(deal){
   // Real Deal with no logged contact in 5+ days (even with status items scheduled): both Jason and Suzanne
   if(deal.stage==='realdeal'){const last=Math.max(...[deal.lastTouchAt,deal.stageSince].filter(Boolean).map(x=>new Date(x).getTime()).filter(isFinite));
     if(isFinite(last)&&Date.now()-last>=5*864e5){const days=Math.floor((Date.now()-last)/864e5);
-      const it={type:'stale',deal,id:'rdquiet',title:`Real Deal: no contact logged in ${days} days. Check in with the borrower or agent`,due:quietShift(new Date(last+5*864e5)).toISOString(),owner:S.ownerId};
+      // Skipped: off both lists until the skip date (next business morning). Logging a contact still clears it.
+      const rb=quietShift(new Date(last+5*864e5)).toISOString(),rsu=deal.rdquietSkipUntil;
+      const it={type:'stale',deal,id:'rdquiet',title:`Real Deal: no contact logged in ${days} days. Check in with the borrower or agent`,due:rsu&&rsu>rb?rsu:rb,owner:S.ownerId};
       items.push(it);if(partnerId()&&partnerId()!==S.ownerId)items.push(Object.assign({},it,{owner:partnerId(),shared:1}));}}
   // Rate not locked after the review call: stays on Jason's list until it's locked or a call to lock is scheduled
   if(deal.stage==='realdeal'){const ms0=deal.milestones||{};
@@ -669,8 +671,10 @@ function staleItem(deal,items){
   if(!isFinite(last))return null;
   const at=new Date(last+lim*864e5);if(at>new Date())return null;
   const days=Math.floor((Date.now()-last)/864e5);
+  // Skipped: off the list until the skip date (next business morning). Logging a contact still clears it.
+  const sb=quietShift(at).toISOString(),ssu=deal.staleSkipUntil;
   return {type:'stale',deal,id:'stale',title:`No contact in ${days} day${days===1?'':'s'} and nothing scheduled: reach out`,
-    due:quietShift(at).toISOString(),owner:deal.stage==='prequal'?partnerId():S.ownerId};
+    due:ssu&&ssu>sb?ssu:sb,owner:deal.stage==='prequal'?partnerId():S.ownerId};
 }
 function allItems(){
   const items=[];for(const d of allDeals())items.push(...openItemsFor(d));
@@ -836,7 +840,9 @@ const DISPOS=[
 const CANCEL_REASONS=['Rate','Program','Inspection','Appraisal','Credit'];
 const DEAD_REASONS=['Went with another lender','Didn’t qualify','Decided not to buy','Stopped responding','Other'];
 const reasonsFor=dp=>dp.k==='dead'?DEAD_REASONS:CANCEL_REASONS;
-const disposFor=(d,item)=>DISPOS.filter(x=>(!x.only||x.only.includes(d.stage))&&(!x.not||!x.not.includes(d.stage))&&(!x.skip||(item&&item.type==='task')));
+const disposFor=(d,item)=>DISPOS.filter(x=>(!x.only||x.only.includes(d.stage))&&(!x.not||!x.not.includes(d.stage))&&(!x.skip||(item&&(item.type==='task'||isNoContact(item)))));
+// No-contact reminders (Real Deal 5-day check-in and the nothing-scheduled safety net) can be skipped
+const isNoContact=it=>it&&it.type==='stale'&&['rdquiet','stale','stale2'].includes(it.id);;
 function dispoStage(d,dp){if(!dp||!dp.stage)return null;if(dp.stageIf&&!dp.stageIf.includes(d.stage))return null;return dp.stage===d.stage?null:dp.stage;}
 // Skip pushes the follow-up to the next business morning (9 AM). Later cadence steps in the same stage
 // move by the same amount so the steps stay in order.
@@ -853,6 +859,12 @@ function saveQuiet(d,item,dp,note){
       patch.tasks=tasks;
       notes.push({at:now,by:S.me,internal:1,text:`Skipped: ${cur.title}. Moved to ${fmtDue(cur.due)}`+(note?' - '+note:'')});
     }
+  }else if(dp.skip&&isNoContact(item)){
+    // No-contact reminder: off the list(s) until the next business morning.
+    // Not a contact (the day count keeps going), no agent email.
+    const su=skipTo().toISOString();
+    if(item.id==='rdquiet')patch.rdquietSkipUntil=su;else patch.staleSkipUntil=su;
+    notes.push({at:now,by:S.me,internal:1,text:`Skipped: ${item.id==='rdquiet'?'Real Deal no-contact reminder':'no-contact reminder'}. Back on the list ${fmtDue(su)}`+(note?' - '+note:'')});
   }else if(note){notes.push({at:now,by:S.me,internal:1,text:'Note - '+note});}
   patch.notes=notes.slice(-200);
   patchDeal(d,patch);
@@ -1594,7 +1606,7 @@ function logCard(d){
   let nextBlock=null,titleIn=null,dueIn=null,reasonIn=null,ownerIn=null,pvSim=null,pvKey='';
   if(dp&&dp.quiet){
     nextBlock=h('div',{class:'nextblock'},h('div',{class:'outcome',text:dp.skip
-      ?`Pushes this follow-up to ${fmtDue(skipTo().toISOString())}. Doesn’t count as a contact, and no email goes out.`
+      ?(isNoContact(item)?`Hides this reminder${item.sharedWith||item.shared?' (for you and Suzanne)':''} until ${fmtDue(skipTo().toISOString())}. Doesn’t count as a contact, and no email goes out to the agent.`:`Pushes this follow-up to ${fmtDue(skipTo().toISOString())}. Doesn’t count as a contact, and no email goes out.`)
       :'Saves the note to the file. The follow-up stays open, it doesn’t count as a contact, and no email goes out.'}));
   }else if(dp){
     const st=dispoStage(d,dp);
