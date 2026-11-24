@@ -5,6 +5,12 @@
 // Keep it plain and short. Never show a rate without its APR and the full rate disclaimer.
 window.NEWS = [
   {
+    date: "2026-11-24",
+    title: "Under contract? Don't let the holidays kill your deal",
+    text: "Between now and closing, skip the store cards, job changes, co-signing and moving money around. Getting holiday cash? Call me first at (913) 687-7247. One quick call can save your closing!",
+    link: { url: "social/2026-11-24/custom/01-dont-get-stuffed.png", label: "See the 5 holiday deal-killers" }
+  },
+  {
     date: "2026-11-19",
     title: "Don't wait for rates to drop. Buy your rate down!",
     text: "Here are 3 ways to lower your rate: a temporary 2-1 buydown, our 1-year lender-paid buydown, and a permanent buydown. Already have a quote? Ask about our $500 second opinion! Watch the quick video, then call me at (913) 687-7247.",
